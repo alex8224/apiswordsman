@@ -1,0 +1,31 @@
+.container {
+    width: 800px;
+    margin: 0 auto;
+}
+
+.chat-box {
+    border: 1px solid #ccc;
+    padding: 10px;
+}
+
+.ai-message {
+    background-color: #f0f0f0;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.user-message {
+    display: flex;
+}
+
+#user-input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ccc;
+}
+
+#send-button {
+    padding: 10px;
+    border: 1px solid #ccc;
+    cursor: pointer;
+}

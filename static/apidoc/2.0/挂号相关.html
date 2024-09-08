@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Management Platform</title>
+    <link rel="stylesheet" href="../static/element-ui.min.css">
+    <link rel="stylesheet" href="../static/codemirror.min.css">
+    <link rel="stylesheet" href="../styles.css">
+</head>
+
+<body>
+<div id="app">
+    <div class="main">
+        <div class="content">
+            <div id="api01">文档修订记录</div>
+
+            <div v-for="tableObj in tableList">
+                <!-- :header-row-class-name="blueHeader1" -->
+                <div v-if="tableObj.type =='image'">
+                    <div :id="tableObj.name" style="margin-top: 20px;">{{ tableObj.name }}</div>
+                </div>
+                <div v-if="tableObj.type=='image'">
+                    <img :src="tableObj.imgsrc"/>
+                </div>
+                <div v-if="tableObj.revisions.length > 0">
+                    <el-table :data="changeData" style="margin-top: 20px;"
+                              :header-cell-style="{ backgroundColor: 'rgba(10, 132, 255, 1)',color:'#fff'}">
+                        <el-table-column prop="version" label="版本号"></el-table-column>
+                        <el-table-column prop="changeStatus" label="*变化状态"></el-table-column>
+                        <el-table-column prop="desc" label="简要说明"></el-table-column>
+                        <el-table-column prop="date" label="日期"></el-table-column>
+                        <el-table-column prop="changer" label="变更人"></el-table-column>
+                        <el-table-column prop="auditDate" label="批准日期"></el-table-column>
+                        <el-table-column prop="auditor" label="批准人"></el-table-column>
+                    </el-table>
+                </div>
+                <div v-if="tableObj.basicInfo.length > 0">
+                    <div :id="tableObj.name" style="margin-top: 20px;">{{ tableObj.name }}</div>
+                    <div id="api02" style="margin-top: 20px;">服务基本信息</div>
+                    <el-table :data="tableObj.basicInfo" :show-header="showHeader" style="margin-top: 20px;">
+                        <el-table-column prop="label" label=" " width="200" :class-name="blueHeader()">
+                        </el-table-column>
+                        <el-table-column label=" ">
+                            <template slot-scope="scope">
+                                <div v-html="formatValue(scope.row.value)"></div>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+                </div>
+
+                <div v-if="tableObj.tableData.length > 0">
+                    <div id="api03" style="margin-top: 20px;">请求消息描述</div>
+                    <el-table :data="tableObj.tableData" style="width: 100%" :show-header="showHeader"
+                              :row-class-name="blueHeader1">
+                        <el-table-column prop="label" label=" " width="200">
+                        </el-table-column>
+                        <el-table-column prop="columnName" label=" " width="200">
+                        </el-table-column>
+                        <el-table-column prop="columnDesc" label=" " width="200">
+                        </el-table-column>
+                        <el-table-column prop="columnType" label=" " width="200">
+                        </el-table-column>
+                        <el-table-column prop="isRequired" label=" " width="200">
+                        </el-table-column>
+                        <el-table-column prop="demp" label=" " width="200">
+                        </el-table-column>
+                    </el-table>
+                    <div v-if="tableObj.reqExample !=''">
+                        <div>请求样例</div>
+                        <div :ref="'xmlEditor_' + tableObj.name + '_req' ">
+                            {{ renderXML(tableObj.reqExample, tableObj.name, 'req') }}
+                        </div>
+                    </div>
+                </div>
+
+
+                <div id="api04" style="margin-top: 20px;">响应消息描述</div>
+                <el-table :data="tableObj.responseTableData" style="width: 100%" :show-header="showHeader"
+                          :row-class-name="blueHeader1">
+                    <el-table-column prop="label" label=" " width="200">
+                        <template slot-scope="scope">
+                            <span>{{scope.row.label}}</span>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="columnName" label=" " width="200">
+                    </el-table-column>
+                    <el-table-column prop="columnDesc" label=" " width="200">
+                    </el-table-column>
+                    <el-table-column prop="columnType" label=" " width="200">
+                    </el-table-column>
+                    <el-table-column prop="isRequired" label=" " width="200">
+                    </el-table-column>
+                    <el-table-column prop="demp" label=" " width="200">
+                    </el-table-column>
+                </el-table>
+
+                <div v-if="tableObj.respExample !=''">
+                    <div>响应样例</div>
+                    <div :ref="'xmlEditor_' + tableObj.name + '_resp'">
+                        {{ renderXML(tableObj.respExample, tableObj.name, 'resp') }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+<script src="../static/vue@2.min.js"></script>
+<script src="../static/element-ui.min.js"></script>
+<script src="../static/codemirror.min.js"></script>
+<script src="../static/xml.min.js"></script>
+<script>
+    new Vue({
+        el: '#app',
+        data: {
+            timeInfo: {
+                today: "",
+                here: "",
+                week: ""
+            },
+            version: '',
+            filterText: '',
+            treeData: [],
+            editor:{},
+            defaultProps: {
+                children: 'children',
+                label: 'nodeName'
+            },
+            showHeader: false,
+            changeData: [],
+            tableList: [
+	{
+		"name":"预约号源查询",
+		"revisions":[
+			{
+				"date":"2023-01-01",
+				"changer":"张三",
+				"changeStatus":"C",
+				"version":"v1",
+				"desc":"增加xxx字段"
+			},
+			{
+				"date":"2023-02-01",
+				"changer":"李四",
+				"changeStatus":"C",
+				"version":"v1",
+				"desc":"增加xxx字段的描述"
+			}
+		],
+		"reqExample":"",
+		"tableData":[
+			{
+				"columnType":"",
+				"isRequired":"",
+				"demp":"",
+				"label":"字段描述",
+				"columnDesc":"",
+				"columnName":""
+			},
+			{
+				"columnType":"类型",
+				"isRequired":"必填",
+				"demp":"示例/说明",
+				"label":"段",
+				"columnDesc":"字段描述",
+				"columnName":"字段名"
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"患者姓名",
+				"columnName":"patientName"
+			},
+			{
+				"columnType":"BaseMsgLog",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"消息日志",
+				"columnName":"MsgLog"
+			},
+			{
+				"columnType":"",
+				"isRequired":"",
+				"demp":"",
+				"label":"∟MsgLog",
+				"columnDesc":"",
+				"columnName":""
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"终端号",
+				"columnName":"terminalNo"
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"用户id",
+				"columnName":"UserId"
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"平台代码",
+				"columnName":"PlatformCode"
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"ip地址",
+				"columnName":"ipAddr"
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"终端类型",
+				"columnName":"requestWay"
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"系统来源",
+				"columnName":"regResource"
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"",
+				"columnName":"regModel"
+			},
+			{
+				"columnType":"Log",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"",
+				"columnName":"日志"
+			},
+			{
+				"columnType":"",
+				"isRequired":"",
+				"demp":"",
+				"label":"∟∟日志",
+				"columnDesc":"",
+				"columnName":""
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"日志id",
+				"columnName":"logId"
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"日志类型",
+				"columnName":"logType"
+			},
+			{
+				"columnType":"List<QueryRegMaster>",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"清单列表",
+				"columnName":"regMasterList"
+			},
+			{
+				"columnType":"",
+				"isRequired":"",
+				"demp":"",
+				"label":"∟regMasterList",
+				"columnDesc":"",
+				"columnName":""
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"医疗机构编码",
+				"columnName":"medInstCode"
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"院区编码",
+				"columnName":"areaCode"
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"是否互联网",
+				"columnName":"isInternet"
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"特需门诊ID",
+				"columnName":"outpSpecialId"
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"医生编码",
+				"columnName":"doctorCode"
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"",
+				"columnName":"outpTypeCode"
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"门诊日期",
+				"columnName":"outpDate"
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"开始时间",
+				"columnName":"startDate"
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"结束时间",
+				"columnName":"endDate"
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"物理院区编码",
+				"columnName":"physicalAreaCode"
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"患者ID",
+				"columnName":"patientId"
+			}
+		],
+		"respExample":"",
+		"type":"api",
+		"responseTableData":[
+			{
+				"columnType":"",
+				"isRequired":"",
+				"demp":"",
+				"label":"字段描述",
+				"columnDesc":"",
+				"columnName":""
+			},
+			{
+				"columnType":"类型",
+				"isRequired":"必填",
+				"demp":"示例/说明",
+				"label":"段",
+				"columnDesc":"字段描述",
+				"columnName":"字段名"
+			},
+			{
+				"columnType":"List",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"",
+				"columnName":"列表"
+			},
+			{
+				"columnType":"",
+				"isRequired":"",
+				"demp":"",
+				"label":"∟列表",
+				"columnDesc":"",
+				"columnName":""
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"masterId",
+				"columnName":"masterId"
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"",
+				"columnName":"areaCode"
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"",
+				"columnName":"physicalAreaCode"
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"",
+				"columnName":"outDate"
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"",
+				"columnName":"outSpecialId"
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"",
+				"columnName":"titleCode"
+			},
+			{
+				"columnType":"List",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"regMasterAtimeList",
+				"columnName":"regMasterAtimeList"
+			},
+			{
+				"columnType":"",
+				"isRequired":"",
+				"demp":"",
+				"label":"∟∟regMasterAtimeList",
+				"columnDesc":"",
+				"columnName":""
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"masterAtimeId",
+				"columnName":"masterAtimeId"
+			},
+			{
+				"columnType":"List",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"regMasterDetailList",
+				"columnName":"regMasterDetailList"
+			},
+			{
+				"columnType":"",
+				"isRequired":"",
+				"demp":"",
+				"label":"∟∟∟regMasterDetailList",
+				"columnDesc":"",
+				"columnName":""
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"masterDetailId",
+				"columnName":"masterDetailId"
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"MasterAtimeId",
+				"columnName":"masterId"
+			}
+		],
+		"basicInfo":[
+			{
+				"label":"提供商",
+				"value":"EMR"
+			},
+			{
+				"label":"协议类型",
+				"value":"WEBSERVICE TCP/IP"
+			},
+			{
+				"label":"请求服务编码",
+				"value":"REG_REGMASTER_QUERY"
+			},
+			{
+				"label":"应答服务编码",
+				"value":"ACK_REG_REGMASTER_QUERY"
+			},
+			{
+				"label":"使用场景",
+				"value":"1. 查询可预约的号源，一般查询某个专科的在一段时间内可以预约的号源 \n1. 查询可预约的号源，一般查询某个专科的在一段时间内可以预约的号源\n1. 查询可预约的号源，一般查询某个专科的在一段时间内可以预约的号源\n1. 查询可预约的号源，一般查询某个专科的在一段时间内可以预约的号源\n"
+			},
+			{
+				"label":"调用说明",
+				"value":"无"
+			}
+		]
+	}
+],
+            mergeRows: []
+        },
+        computed: {
+            time() {
+                return this.timeInfo.today + " " + this.timeInfo.week + " " + this.timeInfo.here
+            },
+        },
+        created() {
+            setInterval(() => {
+                this.getTimeInfo()
+            }, 1000);
+        },
+        destroyed() {
+            this.editor = null;
+        },
+        methods: {
+            formatValue(value) {
+              if (!value) return '';
+                  return value.replace(/\n/g, '<br/>');
+            },
+            renderXML(val, name, typestr) {
+                if (val) {
+                    this.$nextTick(() => {
+                        let nameId = "xmlEditor_" + name + "_" + typestr;
+                        debugger;
+                        if (!(nameId in this.editor)) {
+                            this.$refs[nameId][0].value='';
+                            this.editor[nameId] = CodeMirror.fromTextArea(this.$refs[nameId][0], {
+                                lineNumbers: false, // 显示行号
+                                mode: "application/xml", // 设置语言模式为XML
+                                readOnly: true, // 设置编辑器为只读模式
+                                lineWrapping: true, // 自动换行
+                                smartIndent: false, // 设置初始的XML数据
+                            });
+                            this.editor[nameId].setValue(val);
+                            setTimeout(() => {
+                                this.editor[nameId]?.refresh();
+                            }, 2000);
+                        }
+                    })
+                }
+            },
+            arraySpanMethod({ row, column, rowIndex, columnIndex }) {
+                if (this.mergeRows.includes(rowIndex)) {
+                    if (columnIndex === 0) {
+                        return [1, 2];
+                    } else if (columnIndex === 1) {
+                        return [0, 0];
+                    }
+                }
+                if (rowIndex > 13) {
+                    if (columnIndex === 0) {
+                        if (rowIndex === 14) {
+                            return {
+                                rowspan: 4,
+                                colspan: 6
+                            };
+                        } else {
+                            return {
+                                rowspan: 0,
+                                colspan: 0
+                            };
+                        }
+                    }
+                }
+            },
+            getTimeInfo() {
+                const e = new Date();
+                const t = e.getHours() < 10 ? "0" + e.getHours() : e.getHours();
+                const n = e.getMinutes() < 10 ? "0" + e.getMinutes() : e.getMinutes();
+                const a = e.getSeconds() < 10 ? "0" + e.getSeconds() : e.getSeconds();
+                const o = "".concat(t, ":").concat(n, ":").concat(a);
+                const r = "".concat(e.getFullYear(), "年").concat(e.getMonth() + 1, "月").concat(e.getDate(), "日");
+                let c = "";
+                switch (e.getDay()) {
+                    case 0:
+                        c = "周日";
+                        break;
+                    case 1:
+                        c = "周一";
+                        break;
+                    case 2:
+                        c = "周二";
+                        break;
+                    case 3:
+                        c = "周三";
+                        break;
+                    case 4:
+                        c = "周四";
+                        break;
+                    case 5:
+                        c = "周五";
+                        break;
+                    case 6:
+                        c = "周六";
+                        break
+                }
+                this.timeInfo = {
+                    today: r,
+                    here: o,
+                    week: c
+                }
+            },
+            filterNode(value, data) {
+                if (!value) return true;
+                return data.nodeName.includes(value);
+            },
+            handleNodeClick(data) {
+                const a = document.createElement('a');
+                a.href = "#" + data?.id;
+                a.click();
+            },
+            blueHeader() {
+                return 'blue-header';
+            },
+            blueHeader1({ row, column, rowIndex, columnIndex }) {
+                if (rowIndex === 0) {
+                    return 'blue-header';
+                }
+            },
+        }
+    });
+</script>
+</body>
+
+</html>

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interface</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            width: 80%;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .table-container {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .table-container th, .table-container td {
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        .table-container th {
+            background-color: #f4f4f4;
+        }
+        .version-select {
+            display: flex;
+            align-items: center;
+        }
+        .version-select select, .version-select button {
+            margin-left: 10px;
+        }
+        .link {
+            color: #007bff;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        .link:hover {
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">服务接口列表</div>
+        <table class="table-container">
+            <thead>
+                <tr>
+                    <th>厂家</th>
+                    <th>接口代码</th>
+                    <th>可选版本</th>
+                </tr>
+            </thead>
+            <tbody id="serviceTableBody">
+                <!-- Data will be populated here -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        let srvVsVersionDict = {};
+
+        document.addEventListener("DOMContentLoaded", function() {
+            // First fetch to get version dictionary
+            fetch('/http', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    url: 'http://localhost:8081/isc/apiDoc/services',
+                    method: 'GET'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                let resp;
+                try {
+                    resp = typeof data.resp === 'string' ? JSON.parse(data.resp) : data.resp;
+                } catch (error) {
+                    console.error('Failed to parse version data:', error);
+                    return;
+                }
+
+                if (resp.isSuccess) {
+                    resp.data.forEach(item => {
+                        if (!srvVsVersionDict[item.serviceCode]) {
+                            srvVsVersionDict[item.serviceCode] = {
+                                versionList: [],
+                                apiModel: item.apiModel
+                            };
+                        }
+                        srvVsVersionDict[item.serviceCode].versionList.push(item.versionCode);
+                    });
+                    // Now fetch to get service list and populate table
+                    fetchServiceList();
+                } else {
+                    console.error('Failed to fetch version data:', resp.errorMsg);
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        });
+
+        function fetchServiceList() {
+            fetch('/http', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    url: 'http://localhost:8081/isc/version/',
+                    method: 'GET'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                let resp;
+                try {
+                    resp = typeof data.resp === 'string' ? JSON.parse(data.resp) : data.resp;
+                } catch (error) {
+                    console.error('Failed to parse service list data:', error);
+                    return;
+                }
+
+                if (resp.isSuccess) {
+                    populateTable(resp.data);
+                } else {
+                    console.error('Failed to fetch data:', resp.errorMsg);
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+
+        function populateTable(data) {
+            const tableBody = document.getElementById('serviceTableBody');
+            tableBody.innerHTML = ''; // Clear existing rows
+            data.forEach(service => {
+                const row = document.createElement('tr');
+                const versions = srvVsVersionDict[service.serviceCode] ? srvVsVersionDict[service.serviceCode].versionList : [];
+                const options = versions.map(version => `<option value="${version}">${version}</option>`).join('');
+
+                row.innerHTML = `
+                    <td>${service.manufactorName}</td>
+                    <td><a class="link" target="newwin" href="http://localhost:8081/isc/apiDoc/htmlDoc?clazz=${srvVsVersionDict[service.serviceCode].apiModel}">${service.serviceCode}</a></td>
+                    <td>
+                        <div class="version-select">
+                            <select>
+                                ${options}
+                            </select>
+                            <button onclick="setVersion('${service.manufactorKey}', '${service.serviceCode}', this)">Set Version</button>
+                        </div>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        function setVersion(manufactorKey, serviceCode, buttonElement) {
+            const selectElement = buttonElement.previousElementSibling;
+            const versionCode = selectElement.value;
+            const payload = {
+                url: 'http://localhost:8081/isc/version/updateVer',
+                method: 'POST',
+                req: {
+                    manufacturerCode: manufactorKey,
+                    serviceCode: serviceCode,
+                    versionCode: versionCode
+                }
+            };
+
+            fetch('/http', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            }).then(response => response.json())
+            .then(data => {
+                let resp;
+                try {
+                    resp = typeof data.resp === 'string' ? JSON.parse(data.resp) : data.resp;
+                } catch (error) {
+                    console.error('Failed to parse update response:', error);
+                    return;
+                }
+
+                if (resp.isSuccess && resp.data) {
+                    alert('Version updated successfully');
+                } else {
+                    alert('Failed to update version');
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+        
+        // Expose setVersion to the global scope
+        window.setVersion = setVersion;
+    </script>
+</body>
+</html>

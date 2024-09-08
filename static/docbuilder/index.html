@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API管理平台</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        .toolbar {
+            background-color: #0073e6;
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .toolbar .logo {
+            font-size: 1.5em;
+        }
+        .container {
+            display: flex;
+            height: calc(100vh - 60px);
+        }
+        .sidebar {
+            width: 250px;
+            background-color: #f4f4f4;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .content iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        .sidebar ul {
+            list-style: none;
+            padding: 0;
+        }
+        .sidebar ul li {
+            margin: 10px 0;
+        }
+        .sidebar ul li a {
+            text-decoration: none;
+            color: #0073e6;
+            cursor: pointer;
+            display: block;
+            padding: 5px 10px;
+        }
+        .sidebar ul li a:hover {
+            background-color: #e0f0ff;
+        }
+        .sidebar ul ul {
+            margin-left: 20px;
+        }
+        .active {
+            background-color: #cce5ff;
+            color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <div class="logo">WEGO 云智 - API管理平台</div>
+    </div>
+    <div class="container">
+        <div class="sidebar">
+            <ul id="docTree">
+                <!-- 这里将动态生成树结构 -->
+            </ul>
+        </div>
+        <div class="content">
+            <iframe id="docFrame" src=""></iframe>
+        </div>
+    </div>
+
+    <script>
+        const versions = {
+            v1: [
+                {
+                    title: '01 基础数据接口',
+                    file: 'v1/section1.html',
+                    sections: [
+                        { title: 'HRP接口方案', anchor: '#HRP' },
+                        { title: '单点登录', anchor: '#SSO' },
+                        { title: '用户管理', anchor: '#UserManagement' },
+                        { title: '权限管理', anchor: '#PermissionManagement' },
+                        { title: '系统设置', anchor: '#SystemSettings' }
+                    ]
+                },
+                {
+                    title: '02 医务业务接口',
+                    file: 'v1/section2.html',
+                    sections: [
+                        { title: '患者信息', anchor: '#PatientInfo' },
+                        { title: '就诊记录', anchor: '#VisitRecord' },
+                        { title: '处方信息', anchor: '#PrescriptionInfo' },
+                        { title: '检查报告', anchor: '#CheckReport' },
+                        { title: '住院记录', anchor: '#InpatientRecord' }
+                    ]
+                },
+                // 添加更多文档结构
+            ],
+            v2: [
+                {
+                    title: '01 基础数据接口',
+                    file: 'v2/section1.html',
+                    sections: [
+                        { title: 'HRP接口方案', anchor: '#HRP' },
+                        { title: '单点登录', anchor: '#SSO' },
+                        { title: '用户管理', anchor: '#UserManagement' },
+                        { title: '权限管理', anchor: '#PermissionManagement' },
+                        { title: '系统设置', anchor: '#SystemSettings' }
+                    ]
+                },
+                {
+                    title: '02 医务业务接口',
+                    file: 'v2/section2.html',
+                    sections: [
+                        { title: '患者信息', anchor: '#PatientInfo' },
+                        { title: '就诊记录', anchor: '#VisitRecord' },
+                        { title: '处方信息', anchor: '#PrescriptionInfo' },
+                        { title: '检查报告', anchor: '#CheckReport' },
+                        { title: '住院记录', anchor: '#InpatientRecord' }
+                    ]
+                },
+                // 添加更多文档结构
+            ]
+        };
+
+        function generateTree(version) {
+            const docTree = document.getElementById('docTree');
+            docTree.innerHTML = '';  // 清空当前树结构
+
+            versions[version].forEach(doc => {
+                const docItem = document.createElement('li');
+                const docLink = document.createElement('a');
+                docLink.textContent = doc.title;
+                docLink.href = '#';
+                docLink.onclick = (event) => {
+                    event.preventDefault();
+                    loadDocument(doc.file);
+                    setActiveLink(event.target);
+                };
+                docItem.appendChild(docLink);
+
+                const sectionList = document.createElement('ul');
+                doc.sections.forEach(section => {
+                    const sectionItem = document.createElement('li');
+                    const sectionLink = document.createElement('a');
+                    sectionLink.textContent = section.title;
+                    sectionLink.href = section.anchor;
+                    sectionLink.onclick = (event) => {
+                        event.preventDefault();
+                        loadDocument(doc.file, section.anchor);
+                        setActiveLink(event.target);
+                    };
+                    sectionItem.appendChild(sectionLink);
+                    sectionList.appendChild(sectionItem);
+                });
+                docItem.appendChild(sectionList);
+                docTree.appendChild(docItem);
+            });
+        }
+
+        function loadDocument(file, anchor = '') {
+            const docFrame = document.getElementById('docFrame');
+            docFrame.src = file + anchor;
+        }
+
+        function setActiveLink(target) {
+            const links = document.querySelectorAll('.sidebar ul li a');
+            links.forEach(link => link.classList.remove('active'));
+            target.classList.add('active');
+        }
+
+        function checkAndGenerateVersion(version) {
+            if (!versions[version]) {
+                // 生成对应版本的文档
+                versions[version] = generateVersionData(version);
+            }
+            generateTree(version);
+        }
+
+        function generateVersionData(version) {
+            // 这里可以添加生成版本数据的逻辑
+            // 例如，克隆某个已有版本的数据并进行修改
+            return JSON.parse(JSON.stringify(versions['v1']));  // 简单示例，复制v1的数据
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const initialVersion = 'v1';  // 初始版本
+            checkAndGenerateVersion(initialVersion);
+            // 自动加载第一个文档
+            const firstDoc = versions[initialVersion][0];
+            if (firstDoc) {
+                loadDocument(firstDoc.file);
+                // 设置第一个文档为高亮
+                setTimeout(() => {
+                    const firstLink = document.querySelector(`#docTree > li > a`);
+                    if (firstLink) {
+                        setActiveLink(firstLink);
+                    }
+                }, 100);
+            }
+        });
+    </script>
+</body>
+</html>

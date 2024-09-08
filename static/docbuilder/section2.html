@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>医务业务接口</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+        .example {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <h1>医务业务接口</h1>
+    
+    <h2 id="PatientInfo">患者信息</h2>
+    <table>
+        <tr>
+            <th>接口名称</th>
+            <td>患者信息</td>
+        </tr>
+        <tr>
+            <th>请求方式</th>
+            <td>GET</td>
+        </tr>
+        <tr>
+            <th>请求URL</th>
+            <td>/api/patient</td>
+        </tr>
+    </table>
+    <h3>请求参数</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>参数名</th>
+                <th>类型</th>
+                <th>必填</th>
+                <th>描述</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>id</td>
+                <td>String</td>
+                <td>是</td>
+                <td>患者ID</td>
+            </tr>
+        </tbody>
+    </table>
+    <h3>响应参数</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>参数名</th>
+                <th>类型</th>
+                <th>描述</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>name</td>
+                <td>String</td>
+                <td>患者姓名</td>
+            </tr>
+            <tr>
+                <td>age</td>
+                <td>Integer</td>
+                <td>患者年龄</td>
+            </tr>
+        </tbody>
+    </table>
+    <h3>调用样例</h3>
+    <div class="example">
+        <pre>
+GET /api/patient?id=123 HTTP/1.1
+Host: api.example.com
+        </pre>
+    </div>
+
+    <h2 id="VisitRecord">就诊记录</h2>
+    <table>
+        <tr>
+            <th>接口名称</th>
+            <td>就诊记录</td>
+        </tr>
+        <tr>
+            <th>请求方式</th>
+            <td>GET</td>
+        </tr>
+        <tr>
+            <th>请求URL</th>
+            <td>/api/visit</td>
+        </tr>
+    </table>
+    <h3>请求参数</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>参数名</th>
+                <th>类型</th>
+                <th>必填</th>
+                <th>描述</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>patient_id</td>
+                <td>String</td>
+                <td>是</td>
+                <td>患者ID</td>
+            </tr>
+        </tbody>
+    </table>
+    <h3>响应参数</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>参数名</th>
+                <th>类型</th>
+                <th>描述</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>visit_id</td>
+                <td>String</td>
+                <td>就诊记录ID</td>
+            </tr>
+            <tr>
+                <td>date</td>
+                <td>String</td>
+                <td>就诊日期</td>
+            </tr>
+        </tbody>
+    </table>
+    <h3>调用样例</h3>
+    <div class="example">
+        <pre>
+GET /api/visit?patient_id=123 HTTP/1.1
+Host: api.example.com
+        </pre>
+    </div>
+</body>
+</html>

@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Management Platform</title>
+    <link rel="stylesheet" href="../static/element-ui.min.css">
+    <link rel="stylesheet" href="../static/codemirror.min.css">
+    <link rel="stylesheet" href="../styles.css">
+</head>
+
+<body>
+<div id="app">
+    <div class="main">
+        <div class="content">
+            <div id="api01">文档修订记录</div>
+
+            <div v-for="tableObj in tableList">
+                <!-- :header-row-class-name="blueHeader1" -->
+                <div v-if="tableObj.type =='image'">
+                    <div :id="tableObj.name" style="margin-top: 20px;">{{ tableObj.name }}</div>
+                </div>
+                <div v-if="tableObj.type=='image'">
+                    <img :src="tableObj.imgsrc"/>
+                </div>
+                <div v-if="tableObj.revisions.length > 0">
+                    <el-table :data="changeData" style="margin-top: 20px;"
+                              :header-cell-style="{ backgroundColor: 'rgba(10, 132, 255, 1)',color:'#fff'}">
+                        <el-table-column prop="version" label="版本号"></el-table-column>
+                        <el-table-column prop="changeStatus" label="*变化状态"></el-table-column>
+                        <el-table-column prop="desc" label="简要说明"></el-table-column>
+                        <el-table-column prop="date" label="日期"></el-table-column>
+                        <el-table-column prop="changer" label="变更人"></el-table-column>
+                        <el-table-column prop="auditDate" label="批准日期"></el-table-column>
+                        <el-table-column prop="auditor" label="批准人"></el-table-column>
+                    </el-table>
+                </div>
+                <div v-if="tableObj.basicInfo.length > 0">
+                    <div :id="tableObj.name" style="margin-top: 20px;">{{ tableObj.name }}</div>
+                    <div id="api02" style="margin-top: 20px;">服务基本信息</div>
+                    <el-table :data="tableObj.basicInfo" :show-header="showHeader" style="margin-top: 20px;">
+                        <el-table-column prop="label" label=" " width="200" :class-name="blueHeader()">
+                        </el-table-column>
+                        <el-table-column label=" ">
+                            <template slot-scope="scope">
+                                <div v-html="formatValue(scope.row.value)"></div>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+                </div>
+
+                <div v-if="tableObj.tableData.length > 0">
+                    <div id="api03" style="margin-top: 20px;">请求消息描述</div>
+                    <el-table :data="tableObj.tableData" style="width: 100%" :show-header="showHeader"
+                              :row-class-name="blueHeader1">
+                        <el-table-column prop="label" label=" " width="200">
+                        </el-table-column>
+                        <el-table-column prop="columnName" label=" " width="200">
+                        </el-table-column>
+                        <el-table-column prop="columnDesc" label=" " width="200">
+                        </el-table-column>
+                        <el-table-column prop="columnType" label=" " width="200">
+                        </el-table-column>
+                        <el-table-column prop="isRequired" label=" " width="200">
+                        </el-table-column>
+                        <el-table-column prop="demp" label=" " width="200">
+                        </el-table-column>
+                    </el-table>
+                    <div v-if="tableObj.reqExample !=''">
+                        <div>请求样例</div>
+                        <div :ref="'xmlEditor_' + tableObj.name + '_req' ">
+                            {{ renderXML(tableObj.reqExample, tableObj.name, 'req') }}
+                        </div>
+                    </div>
+                </div>
+
+
+                <div id="api04" style="margin-top: 20px;">响应消息描述</div>
+                <el-table :data="tableObj.responseTableData" style="width: 100%" :show-header="showHeader"
+                          :row-class-name="blueHeader1">
+                    <el-table-column prop="label" label=" " width="200">
+                        <template slot-scope="scope">
+                            <span>{{scope.row.label}}</span>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="columnName" label=" " width="200">
+                    </el-table-column>
+                    <el-table-column prop="columnDesc" label=" " width="200">
+                    </el-table-column>
+                    <el-table-column prop="columnType" label=" " width="200">
+                    </el-table-column>
+                    <el-table-column prop="isRequired" label=" " width="200">
+                    </el-table-column>
+                    <el-table-column prop="demp" label=" " width="200">
+                    </el-table-column>
+                </el-table>
+
+                <div v-if="tableObj.respExample !=''">
+                    <div>响应样例</div>
+                    <div :ref="'xmlEditor_' + tableObj.name + '_resp'">
+                        {{ renderXML(tableObj.respExample, tableObj.name, 'resp') }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+<script src="../static/vue@2.min.js"></script>
+<script src="../static/element-ui.min.js"></script>
+<script src="../static/codemirror.min.js"></script>
+<script src="../static/xml.min.js"></script>
+<script>
+    new Vue({
+        el: '#app',
+        data: {
+            timeInfo: {
+                today: "",
+                here: "",
+                week: ""
+            },
+            version: '',
+            filterText: '',
+            treeData: [],
+            editor:{},
+            defaultProps: {
+                children: 'children',
+                label: 'nodeName'
+            },
+            showHeader: false,
+            changeData: [],
+            tableList: [
+	{
+		"name":"CdssQueryReq",
+		"revisions":[],
+		"reqExample":"",
+		"tableData":[
+			{
+				"columnType":"",
+				"isRequired":"",
+				"demp":"",
+				"label":"字段描述",
+				"columnDesc":"",
+				"columnName":""
+			},
+			{
+				"columnType":"类型",
+				"isRequired":"必填",
+				"demp":"示例/说明",
+				"label":"段",
+				"columnDesc":"字段描述",
+				"columnName":"字段名"
+			},
+			{
+				"columnType":"Header",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"消息头",
+				"columnName":"Header"
+			},
+			{
+				"columnType":"",
+				"isRequired":"",
+				"demp":"",
+				"label":"∟Header",
+				"columnDesc":"",
+				"columnName":""
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"HIS",
+				"label":"",
+				"columnDesc":"发送者",
+				"columnName":"Sender"
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"PACS",
+				"label":"",
+				"columnDesc":"接收者",
+				"columnName":"Receiver"
+			},
+			{
+				"columnType":"Date",
+				"isRequired":"是",
+				"demp":"2018-01-",
+				"label":"",
+				"columnDesc":"发送日期",
+				"columnName":"SendDate"
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"000000",
+				"label":"",
+				"columnDesc":"服务代码",
+				"columnName":"ServiceCode"
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"4cdbc040-657a-4847-b266-7e31d9e2c3d9",
+				"label":"",
+				"columnDesc":"消息ID",
+				"columnName":"MsgId"
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"授权码",
+				"columnName":"AuthCode"
+			},
+			{
+				"columnType":"Body",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"消息体",
+				"columnName":"Body"
+			},
+			{
+				"columnType":"",
+				"isRequired":"",
+				"demp":"",
+				"label":"∟Body",
+				"columnDesc":"",
+				"columnName":""
+			},
+			{
+				"columnType":"body",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"消息体",
+				"columnName":"patientInfo"
+			},
+			{
+				"columnType":"",
+				"isRequired":"",
+				"demp":"",
+				"label":"∟∟patientInfo",
+				"columnDesc":"",
+				"columnName":""
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"患者ID",
+				"columnName":"PatientId"
+			},
+			{
+				"columnType":"String",
+				"isRequired":"是",
+				"demp":"",
+				"label":"",
+				"columnDesc":"患者姓名",
+				"columnName":"PatientName"
+			}
+		],
+		"type":"api",
+		"basicInfo":[
+			{
+				"label":"提供商",
+				"value":""
+			},
+			{
+				"label":"协议类型",
+				"value":""
+			},
+			{
+				"label":"请求服务编码",
+				"value":""
+			},
+			{
+				"label":"应答服务编码",
+				"value":""
+			},
+			{
+				"label":"使用场景",
+				"value":""
+			},
+			{
+				"label":"调用说明",
+				"value":""
+			}
+		]
+	}
+],
+            mergeRows: []
+        },
+        computed: {
+            time() {
+                return this.timeInfo.today + " " + this.timeInfo.week + " " + this.timeInfo.here
+            },
+        },
+        created() {
+            setInterval(() => {
+                this.getTimeInfo()
+            }, 1000);
+        },
+        destroyed() {
+            this.editor = null;
+        },
+        methods: {
+            formatValue(value) {
+              if (!value) return '';
+                  return value.replace(/\n/g, '<br/>');
+            },
+            renderXML(val, name, typestr) {
+                if (val) {
+                    this.$nextTick(() => {
+                        let nameId = "xmlEditor_" + name + "_" + typestr;
+                        debugger;
+                        if (!(nameId in this.editor)) {
+                            this.$refs[nameId][0].value='';
+                            this.editor[nameId] = CodeMirror.fromTextArea(this.$refs[nameId][0], {
+                                lineNumbers: false, // 显示行号
+                                mode: "application/xml", // 设置语言模式为XML
+                                readOnly: true, // 设置编辑器为只读模式
+                                lineWrapping: true, // 自动换行
+                                smartIndent: false, // 设置初始的XML数据
+                            });
+                            this.editor[nameId].setValue(val);
+                            setTimeout(() => {
+                                this.editor[nameId]?.refresh();
+                            }, 2000);
+                        }
+                    })
+                }
+            },
+            arraySpanMethod({ row, column, rowIndex, columnIndex }) {
+                if (this.mergeRows.includes(rowIndex)) {
+                    if (columnIndex === 0) {
+                        return [1, 2];
+                    } else if (columnIndex === 1) {
+                        return [0, 0];
+                    }
+                }
+                if (rowIndex > 13) {
+                    if (columnIndex === 0) {
+                        if (rowIndex === 14) {
+                            return {
+                                rowspan: 4,
+                                colspan: 6
+                            };
+                        } else {
+                            return {
+                                rowspan: 0,
+                                colspan: 0
+                            };
+                        }
+                    }
+                }
+            },
+            getTimeInfo() {
+                const e = new Date();
+                const t = e.getHours() < 10 ? "0" + e.getHours() : e.getHours();
+                const n = e.getMinutes() < 10 ? "0" + e.getMinutes() : e.getMinutes();
+                const a = e.getSeconds() < 10 ? "0" + e.getSeconds() : e.getSeconds();
+                const o = "".concat(t, ":").concat(n, ":").concat(a);
+                const r = "".concat(e.getFullYear(), "年").concat(e.getMonth() + 1, "月").concat(e.getDate(), "日");
+                let c = "";
+                switch (e.getDay()) {
+                    case 0:
+                        c = "周日";
+                        break;
+                    case 1:
+                        c = "周一";
+                        break;
+                    case 2:
+                        c = "周二";
+                        break;
+                    case 3:
+                        c = "周三";
+                        break;
+                    case 4:
+                        c = "周四";
+                        break;
+                    case 5:
+                        c = "周五";
+                        break;
+                    case 6:
+                        c = "周六";
+                        break
+                }
+                this.timeInfo = {
+                    today: r,
+                    here: o,
+                    week: c
+                }
+            },
+            filterNode(value, data) {
+                if (!value) return true;
+                return data.nodeName.includes(value);
+            },
+            handleNodeClick(data) {
+                const a = document.createElement('a');
+                a.href = "#" + data?.id;
+                a.click();
+            },
+            blueHeader() {
+                return 'blue-header';
+            },
+            blueHeader1({ row, column, rowIndex, columnIndex }) {
+                if (rowIndex === 0) {
+                    return 'blue-header';
+                }
+            },
+        }
+    });
+</script>
+</body>
+
+</html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API管理平台</title>
+    <link rel="stylesheet" href="./static/element-ui.min.css">
+    <link rel="stylesheet" href="./static/codemirror.min.css">
+    <link rel="stylesheet" href="./styles.css">
+</head>
+
+<body>
+<div id="app">
+    <div class="hodeLyout__header"><img src="./img/header-logo.png" alt="" class="hodeLyout__header__logo">
+        <div class="hodeLyout__header__title">API管理平台</div>
+        <div class="hodeLyout__header__time">{{ time }}</div>
+        <div class="hodeLyout__header__login">
+            <i title="注销登录" class="iconfont el-icon-switch-button"></i>
+        </div>
+    </div>
+    <div class="header">
+        <div class="title">API管理平台</div>
+        <el-select v-model="version" placeholder="请选择版本" @change="loadSidebar">
+            <el-option v-for="ver in versions" :key="ver" :label="ver" :value="ver"></el-option>
+        </el-select>
+    </div>
+    <div class="main">
+        <div class="content">
+            <iframe id="sidebarFrame" :src="sidebarSrc" frameborder="0" style="width: 100%; height: 100%;"></iframe>
+        </div>
+    </div>
+</div>
+<script src="./static/vue@2.min.js"></script>
+<script src="./static/element-ui.min.js"></script>
+<script>
+    new Vue({
+        el: '#app',
+        data: {
+            timeInfo: {
+                today: "",
+                here: "",
+                week: ""
+            },
+            version: '',
+            versions: ["1.0","2.0"],
+            sidebarSrc: '',
+            filterText: '',
+            treeData: [],
+            defaultProps: {
+                children: 'children',
+                label: 'nodeName'
+            }
+        },
+        computed: {
+            time() {
+                return this.timeInfo.today + " " + this.timeInfo.week + " " + this.timeInfo.here;
+            }
+        },
+        created() {
+            setInterval(() => {
+                this.getTimeInfo()
+            }, 1000);
+            this.setDefaultVersion();
+        },
+        methods: {
+            getTimeInfo() {
+                const e = new Date();
+                const t = e.getHours() < 10 ? "0" + e.getHours() : e.getHours();
+                const n = e.getMinutes() < 10 ? "0" + e.getMinutes() : e.getMinutes();
+                const a = e.getSeconds() < 10 ? "0" + e.getSeconds() : e.getSeconds();
+                const o = "".concat(t, ":").concat(n, ":").concat(a);
+                const r = "".concat(e.getFullYear(), "年").concat(e.getMonth() + 1, "月").concat(e.getDate(), "日");
+                let c = "";
+                switch (e.getDay()) {
+                    case 0: c = "周日"; break;
+                    case 1: c = "周一"; break;
+                    case 2: c = "周二"; break;
+                    case 3: c = "周三"; break;
+                    case 4: c = "周四"; break;
+                    case 5: c = "周五"; break;
+                    case 6: c = "周六"; break;
+                }
+                this.timeInfo = {
+                    today: r,
+                    here: o,
+                    week: c
+                }
+            },
+            setDefaultVersion() {
+                if (this.versions.length > 0) {
+                    this.version = this.versions[this.versions.length - 1];
+                    this.loadSidebar();
+                }
+            },
+            loadSidebar() {
+                this.sidebarSrc = `./${this.version}/index.html`;
+            }
+        }
+    });
+</script>
+</body>
+</html>

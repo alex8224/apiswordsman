@@ -1,0 +1,65 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    font-family: 'Arial', sans-serif;
+    background-color: #f0f2f5;
+}
+
+.document {
+    width: 80%;
+    margin: 20px auto;
+    background-color: #ffffff;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.document-header h1 {
+    font-size: 24px;
+    color: #333;
+}
+
+.status-info {
+    font-size: 14px;
+    color: #666;
+    margin-top: 10px;
+}
+
+.status-info span {
+    display: inline-block;
+    margin-right: 20px;
+}
+
+.section-info, .section-description, .section-documents, .section-images, .section-comments {
+    border-top: 2px solid #eee;
+    padding-top: 20px;
+    margin-top: 20px;
+}
+
+.section-info h2, .section-description h2, .section-documents h2, .section-images h2, .section-comments h2 {
+    margin: 0;
+    padding-bottom: 10px;
+    font-size: 18px;
+    color: #333;
+}
+
+.section-info p, .section-description p, .section-documents a, .section-comments .comment {
+    margin-top: 10px;
+    color: #555;
+}
+
+.section-documents a {
+    display: block;
+    color: #0066cc;
+    text-decoration: none;
+}
+
+.section-images img {
+    width: 100px;
+    margin-right: 10px;
+    vertical-align: top;
+}
+
+.section-comments .comment p {
+    margin: 5px 0;
+}
