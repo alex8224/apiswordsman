@@ -29,9 +29,18 @@ func main() {
 	systray.Run(onReady, onExit)
 }
 
+type CreateServerReq struct {
+	Port        int               `json:"port"`
+	Type        string            `json:"type"`
+	Data        string            `json:"mockData"`
+	ContentType string            `json:"contentType"`
+	Headers     map[string]string `json:"headers"`
+}
+
 // DynamicServer 结构体用于管理动态创建的服务器
 type DynamicServer struct {
 	servers       map[int]*http.Server
+	serverConfigs map[int]*CreateServerReq
 	serversMutex  sync.Mutex
 	wsConnections map[*websocket.Conn]map[int]bool
 	wsConnMutex   sync.RWMutex
@@ -45,18 +54,11 @@ type WSMessage struct {
 	Data   interface{} `json:"data,omitempty"`
 }
 
-type CreateServerReq struct {
-	Port        int               `json:"port"`
-	Type        string            `json:"type"`
-	Data        string            `json:"mockData"`
-	ContentType string            `json:"contentType"`
-	Headers     map[string]string `json:"headers"`
-}
-
 // NewDynamicServer 创建并初始化一个新的 DynamicServer 实例
 func NewDynamicServer() *DynamicServer {
 	return &DynamicServer{
 		servers:       make(map[int]*http.Server),
+		serverConfigs: make(map[int]*CreateServerReq),
 		wsConnections: make(map[*websocket.Conn]map[int]bool),
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
@@ -80,6 +82,8 @@ func startServer() {
 	r.GET("/ws", dynamicServer.HandleWebSocket)
 	r.GET("/listservers", dynamicServer.ListServers)
 	r.POST("/stopserver", dynamicServer.StopServer)
+	r.GET("/getserver", dynamicServer.GetServerConfig)
+	r.POST("/updateserver", dynamicServer.UpdateServer)
 
 	r.Run(":8080")
 }
@@ -778,10 +782,12 @@ func (ds *DynamicServer) startHTTPServer(req *CreateServerReq) {
 			Action: "request",
 			Port:   req.Port,
 			Data: map[string]interface{}{
-				"method":  r.Method,
-				"url":     r.URL.String(),
-				"headers": r.Header,
-				"body":    string(body),
+				"method":     r.Method,
+				"url":        r.URL.String(),
+				"headers":    r.Header,
+				"body":       string(body),
+				"mockData":   req.Data,
+				"mockHeader": req.Headers,
 			},
 		}
 
@@ -801,6 +807,7 @@ func (ds *DynamicServer) startHTTPServer(req *CreateServerReq) {
 
 	ds.serversMutex.Lock()
 	ds.servers[req.Port] = server
+	ds.serverConfigs[req.Port] = req
 	ds.serversMutex.Unlock()
 
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -915,4 +922,55 @@ func (ds *DynamicServer) StopServer(c *gin.Context) {
 	delete(ds.servers, req.Port)
 
 	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Server on port %d has been stopped", req.Port)})
+}
+
+// UpdateServer 更新指定端口的服务器配置
+func (ds *DynamicServer) UpdateServer(c *gin.Context) {
+	var req CreateServerReq
+
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ds.serversMutex.Lock()
+	defer ds.serversMutex.Unlock()
+
+	serverConfig, exists := ds.serverConfigs[req.Port]
+	if !exists {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Server not found on this port"})
+		return
+	}
+
+	// 更新除了端口号之外的配置
+	serverConfig.Data = req.Data
+	serverConfig.Headers = req.Headers
+
+	fmt.Println("serverConfig.Data = ", req.Data)
+
+	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Server on port %d has been updated", req.Port)})
+}
+
+// GetServerConfig 获取指定端口的服务器配置信息
+func (ds *DynamicServer) GetServerConfig(c *gin.Context) {
+	portStr := c.Query("port")
+	fmt.Println("request port ", portStr)
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid port number"})
+		return
+	}
+
+	ds.serversMutex.Lock()
+	defer ds.serversMutex.Unlock()
+
+	serverConfig, exists := ds.serverConfigs[port]
+	if !exists {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Server not found on this port"})
+		return
+	}
+
+	fmt.Println("")
+
+	c.JSON(http.StatusOK, serverConfig)
 }

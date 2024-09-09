@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Mock Server</title>
+        <link rel="stylesheet" href="styles.css" />
+    </head>
+    <body>
+        <div class="container">
+            <h3 id="server-title"></h3>
+            <div class="message-section">
+                <h4>请求</h4>
+                <div class="message-content">
+                    <div class="message-header">
+                        <h5>Header</h5>
+                        <pre id="request-header"></pre>
+                    </div>
+                    <div class="message-body">
+                        <h5>Body</h5>
+                        <pre id="request-body"></pre>
+                    </div>
+                </div>
+            </div>
+            <div class="message-section">
+                <h4>响应</h4>
+                <div class="message-resp-content">
+                    <div class="message-header">
+                        <h5>Header</h5>
+                        <pre id="response-header"></pre>
+                    </div>
+                    <div class="message-body">
+                        <h5>Body</h5>
+                        <pre id="response-body"></pre>
+                    </div>
+                </div>
+            </div>
+            <!-- 添加关闭服务的按钮 -->
+            <button class="btn" id="stop-server-btn" onclick="stopServer()">
+                关闭服务
+            </button>
+            <button
+                class="btn"
+                id="edit-response-btn"
+                onclick="showEditResponseModal()"
+            >
+                修改响应请求
+            </button>
+        </div>
+
+        <!-- 弹出框 -->
+        <div id="edit-response-modal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeEditResponseModal()"
+                    >&times;</span
+                >
+                <h3>修改响应请求</h3>
+                <textarea id="response-data"></textarea>
+                <br />
+                <button class="btn" onclick="updateResponseData()">修改</button>
+            </div>
+        </div>
+
+        <script>
+            let ws;
+
+            function subscribeToServer(port) {
+                ws = new WebSocket("ws://localhost:8080/ws");
+                ws.onopen = function () {
+                    ws.send(
+                        JSON.stringify({
+                            action: "subscribe",
+                            port: parseInt(port, 10),
+                        }),
+                    );
+                };
+                ws.onmessage = function (event) {
+                    const message = JSON.parse(event.data);
+                    if (message.action === "request") {
+                        debugger;
+                        document.getElementById("request-header").textContent =
+                            JSON.stringify(message.data.headers, null, 2);
+                        document.getElementById("request-body").textContent =
+                            message.data.body;
+                        document.getElementById("response-header").textContent =
+                            JSON.stringify(message.data.mockHeader, null, 2);
+                        document.getElementById("response-body").textContent =
+                            message.data.mockData;
+                    }
+                };
+                ws.onclose = function () {
+                    console.log("WebSocket closed");
+                };
+                ws.onerror = function (error) {
+                    console.error("WebSocket error:", error);
+                };
+            }
+
+            window.onload = function () {
+                const urlParams = new URLSearchParams(window.location.search);
+                const port = urlParams.get("port");
+                const type = urlParams.get("type");
+                document.getElementById("server-title").textContent =
+                    `端口: ${port}, 类型: ${type}`;
+                subscribeToServer(port);
+            };
+
+            // 添加关闭服务的函数
+            function stopServer() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const port = urlParams.get("port");
+
+                fetch("http://localhost:8080/stopserver", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        port: parseInt(port, 10),
+                    }),
+                })
+                    .then((response) => {
+                        if (response.status === 200) {
+                            alert("服务已关闭");
+                            window.close(); // 关闭当前窗口
+                        } else {
+                            alert("关闭服务失败");
+                        }
+                    })
+                    .catch((error) => {
+                        console.error("Error:", error);
+                        alert("关闭服务失败");
+                    });
+            }
+
+            // 显示修改响应请求的弹出框
+            function showEditResponseModal() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const port = urlParams.get("port");
+
+                fetch(`http://localhost:8080/getserver?port=${port}`)
+                    .then((response) => response.json())
+                    .then((data) => {
+                        document.getElementById("response-data").value =
+                            data.mockData;
+                        document.getElementById(
+                            "edit-response-modal",
+                        ).style.display = "block";
+                    })
+                    .catch((error) => {
+                        console.error("Error fetching server data:", error);
+                        alert("获取服务器数据失败");
+                    });
+            }
+
+            // 关闭修改响应请求的弹出框
+            function closeEditResponseModal() {
+                document.getElementById("edit-response-modal").style.display =
+                    "none";
+            }
+
+            // 更新响应数据
+            function updateResponseData() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const port = urlParams.get("port");
+                const newData = document.getElementById("response-data").value;
+
+                fetch("http://localhost:8080/updateserver", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        port: parseInt(port, 10),
+                        mockData: newData,
+                    }),
+                })
+                    .then((response) => {
+                        if (response.status === 200) {
+                            alert("响应数据已更新");
+                            closeEditResponseModal();
+                        } else {
+                            alert("更新响应数据失败");
+                        }
+                    })
+                    .catch((error) => {
+                        console.error("Error updating server data:", error);
+                        alert("更新响应数据失败");
+                    });
+            }
+        </script>
+    </body>
+</html>

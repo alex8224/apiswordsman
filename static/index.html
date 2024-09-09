@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>消息发送模拟器</title>
     <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
     <div class="container">
         <!-- 标签栏 -->
@@ -19,15 +21,6 @@
             <button class="scroll-btn right" onclick="scrollTabs('right')">&gt;</button>
         </div>
 
-
-<!--
-    <div class="tabs">
-    <ul id="tab-list">
-    <li class="tab add-tab" onclick="showAddTabDialog()">新增标签</li>
-    </ul>
-    </div>
--->
-        
         <!-- 操作面板 -->
         <div class="toolbar">
             <div class="form-group">
@@ -61,6 +54,7 @@
             <button class="btn" onclick="sendRequest()">发送</button>
             <button class="btn" onclick="clearForm()">清空</button>
             <button class="btn" id="add-header-btn" style="display: none;" onclick="addHeader()">添加Header</button>
+            <button class="btn" id="add-mock-header-btn" onclick="showNewServerForm()">模拟服务</button>
         </div>
 
         <!-- HTTP Headers 区域 -->
@@ -116,6 +110,42 @@
         <button class="btn" onclick="closeDialog()">取消</button>
     </div>
 
+     <!-- 新增服务模态框 -->
+     <div id="new-server-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" onclick="closeNewServerForm()">&times;</span>
+            <h3>新增服务</h3>
+            <div class="form-group">
+                <label for="new-server-port">端口号：</label>
+                <input type="text" id="new-server-port" placeholder="服务端口号">
+            </div>
+            <div class="form-group">
+                <label for="new-server-type">类型：</label>
+                <select id="new-server-type">
+                    <option value="http">HTTP</option>
+                    <option value="tcp">TCP</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="new-server-mock-data">模拟返回数据：</label>
+                <textarea id="new-server-mock-data" placeholder="请求该服务时模拟返回的数据" rows="5"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="new-server-headers">返回的Header数据：</label>
+                <div id="headers-container">
+                    <div class="header-row">
+                        <input type="text" class="header-key" placeholder="Key">
+                        <input type="text" class="header-value" placeholder="Value">
+                        <button class="btn" onclick="removeHeader(this)">删除</button>
+                    </div>
+                </div>
+                <button class="btn" onclick="addHeaderRow()">新增Header</button>
+            </div>
+            <button class="btn" onclick="createNewServer()">创建服务</button>
+            <button class="btn" onclick="closeNewServerForm()">取消</button>
+        </div>
+    </div>
+
     <script>
         let currentTabId;
         let tabData = {};
@@ -123,7 +153,7 @@
         document.getElementById('http-method-group').style.display = 'none';
         document.getElementById('soap-method-group').style.display = 'none';
 
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             loadTabs();
             adjustTabs();
             document.getElementById('tab-list').addEventListener('scroll', checkScrollButtons);
@@ -258,7 +288,7 @@
             }
         }
 
-       async function handleProtocolChange(protocol, savedHttpMethod, savedSoapMethod) {
+        async function handleProtocolChange(protocol, savedHttpMethod, savedSoapMethod) {
             protocol = protocol || document.getElementById('protocol').value;
             var httpMethodGroup = document.getElementById('http-method-group');
             var soapMethodGroup = document.getElementById('soap-method-group');
@@ -340,9 +370,9 @@
         }
 
         function transformReqBody(format, body) {
-            if(format == "hl7") {
+            if (format == "hl7") {
                 return body.replaceAll('\n', '\r');
-            }else{
+            } else {
                 return body;
             }
         }
@@ -359,7 +389,7 @@
             requestBody = transformReqBody(contentFormat, requestBody)
             console.log("after ", contentFormat, requestBody)
 
-            if (protocol === 'http') {			    
+            if (protocol === 'http') {
                 var httpMethod = document.getElementById('http-method').value;
                 const headerGroups = document.querySelectorAll('#headers-container .header-form-group');
                 if (headerGroups.length > 0) {
@@ -376,7 +406,7 @@
                     url: endpoint,
                     method: httpMethod,
                     req: requestBody,
-					req_headers: headers
+                    req_headers: headers
                 });
             } else if (protocol === 'mllp') {
                 url = '/mllp';
@@ -398,7 +428,7 @@
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: {
-                        "Content-Type":"application/json",					
+                        "Content-Type": "application/json",
                         ...headers
                     },
                     body: data
@@ -462,8 +492,8 @@
             tab.className = 'tab';
             tab.dataset.id = id;
             tab.textContent = title;
-            tab.onclick = function() { activateTab(id); };
-            tab.oncontextmenu = function(event) {
+            tab.onclick = function () { activateTab(id); };
+            tab.oncontextmenu = function (event) {
                 event.preventDefault();
                 showContextMenu(event, id);
             };
@@ -485,17 +515,17 @@
             contextMenu.className = 'context-menu';
             const renameOption = document.createElement('li');
             renameOption.textContent = '重命名';
-            renameOption.onclick = function() { renameTab(id); };
+            renameOption.onclick = function () { renameTab(id); };
             const closeOption = document.createElement('li');
             closeOption.textContent = '关闭';
-            closeOption.onclick = function() { closeTab(id); };
+            closeOption.onclick = function () { closeTab(id); };
             contextMenu.appendChild(renameOption);
             contextMenu.appendChild(closeOption);
             document.body.appendChild(contextMenu);
             contextMenu.style.top = `${event.clientY}px`;
             contextMenu.style.left = `${event.clientX}px`;
 
-            document.addEventListener('click', function() {
+            document.addEventListener('click', function () {
                 document.body.removeChild(contextMenu);
             }, { once: true });
         }
@@ -608,5 +638,72 @@
             }
         }
     </script>
+
+    <script>
+
+function showNewServerForm() {
+            document.getElementById('new-server-modal').style.display = 'block';
+        }
+
+        function closeNewServerForm() {
+            document.getElementById('new-server-modal').style.display = 'none';
+        }
+
+        function createNewServer() {
+            const port = parseInt(document.getElementById('new-server-port').value, 10);
+            const type = document.getElementById('new-server-type').value;
+            const mockData = document.getElementById('new-server-mock-data').value;
+            const headersContainer = document.getElementById('headers-container');
+            const headers = {};
+            headersContainer.querySelectorAll('.header-row').forEach(row => {
+                const key = row.querySelector('.header-key').value;
+                const value = row.querySelector('.header-value').value;
+                if (key && value) {
+                    headers.push({ key, value });
+                }
+            });
+
+            fetch('http://localhost:8080/createserver', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    port: port,
+                    type: type,
+                    mockData: mockData,
+                    headers: headers
+                })
+            }).then(data => {
+                  if (data.status === 200) {
+                      let srvUrl = `mockServer.html?port=${port}&type=${type}`;
+                      window.open(srvUrl, `_${port}`);
+                  } else {
+                      alert('创建服务失败');
+                  }
+              }).catch(error => {
+                  console.error('Error:', error);
+                  alert('创建服务失败');
+              });
+        }
+
+        function addHeaderRow() {
+            const headersContainer = document.getElementById('headers-container');
+            const newRow = document.createElement('div');
+            newRow.className = 'header-row';
+            newRow.innerHTML = `
+                <input type="text" class="header-key" placeholder="Key">
+                <input type="text" class="header-value" placeholder="Value">
+                <button class="btn" onclick="removeHeader(this)">删除</button>
+            `;
+            headersContainer.appendChild(newRow);
+        }
+
+        function removeHeader(button) {
+            button.parentElement.remove();
+        }
+
+    </script>
 </body>
+
 </html>

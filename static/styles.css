@@ -25,17 +25,17 @@ body {
 .tabs-container {
     flex: 1;
     overflow: hidden;
-	overflow-x: auto;
-	overflow-y: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
 .tabs ul {
-	display: flex;
-	list-style: none;
-	padding: 0;
-	margin: 0;
-	white-space: nowrap;
-	font-size: 13px;
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    white-space: nowrap;
+    font-size: 13px;
 }
 
 .tabs .tab {
@@ -55,9 +55,9 @@ body {
 }
 
 .tabs .tab.active {
-	color: white;
+    color: white;
     background-color: #007bff;
-	font-weight: bold;
+    font-weight: bold;
     border-bottom: 2px solid white;
     margin-bottom: -1px;
 }
@@ -92,7 +92,7 @@ body {
 }
 
 .toolbar {
-	margin-top: -15px;
+    margin-top: -15px;
     display: flex;
     flex-wrap: wrap;
     gap: 20px;
@@ -114,8 +114,8 @@ body {
     font-weight: bold;
 }
 
-.form-group input, 
-.form-group select, 
+.form-group input,
+.form-group select,
 .form-group textarea {
     padding: 8px;
     font-size: 14px;
@@ -158,11 +158,13 @@ button.remove-header-btn:hover {
     background-color: #c82333;
 }
 
-.request-body, .response {
+.request-body,
+.response {
     padding: 20px;
 }
 
-.request-body textarea, .response textarea {
+.request-body textarea,
+.response textarea {
     width: 100%;
     padding: 10px;
     font-size: 14px;
@@ -205,3 +207,65 @@ button.remove-header-btn:hover {
 .context-menu li:hover {
     background-color: #f1f1f1;
 }
+
+/* ... existing styles ... */
+
+/* Modal styles */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1000; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgba(0, 0, 0, 0.4); /* Black w/ opacity */
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 15% auto; /* 15% from the top and centered */
+    padding: 10px;
+    border: 1px solid #888;
+    width: 50%; /* Could be more or less, depending on screen size */
+    box-shadow:
+        0 4px 8px 0 rgba(0, 0, 0, 0.2),
+        0 6px 20px 0 rgba(0, 0, 0, 0.19);
+    position: relative;
+}
+
+#response-data {
+    width: 100%;
+    height: 100%;
+}
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    position: absolute;
+    top: 10px;
+    right: 15px;
+}
+
+.close:hover,
+.close:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.header-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.header-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 10px;
+}
+
+/* ... existing styles ... */
