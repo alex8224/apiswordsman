@@ -7,7 +7,10 @@ on:
   pull_request:
     branches:
       - master
-
+env:
+  GO111MODULE: on
+  GOOS: darwin
+  GOARCH: amd64
 jobs:
   build:
     runs-on: ${{ matrix.os }}
