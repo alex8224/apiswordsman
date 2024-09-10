@@ -10,7 +10,6 @@ on:
 env:
   GO111MODULE: on
   GOOS: darwin
-  GOARCH: amd64
   CGO_ENABLED: 1
 jobs:
   build:
@@ -35,13 +34,13 @@ jobs:
             ver
           fi
       - name: Build for ${{ matrix.os }}
-        env:
-          GO111MODULE: on
-          GOOS: darwin
-          GOARCH: amd64
         run: |
           if [ "${{ matrix.os }}" == "macos-latest" ]; then
-            go build -o dist/myapp-macos
+            echo "===build amd64 release"
+            go build -o dist/apixia-macos-amd64
+            unset GOARCH
+            echo "===build arm64 release"
+            go build -o dist/apixia-macos-arm64
           fi
 
       - name: Upload artifact
