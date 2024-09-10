@@ -13,7 +13,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest, windows-latest]
+        os: [macos-latest]
 
     steps:
       - name: Checkout code
@@ -33,9 +33,7 @@ jobs:
       - name: Build for ${{ matrix.os }}
         run: |
           if [ "${{ matrix.os }}" == "macos-latest" ]; then
-            GO111MODULE=on GOOS=darwin GOARCH=amd64 go build -o myapp-macos
-          elif [ "${{ matrix.os }}" == "windows-latest" ]; then
-            GO111MODULE=on GOOS=windows GOARCH=amd64 go build -o myapp.exe
+            env GO111MODULE=on GOOS=darwin GOARCH=amd64 go build -o myapp-macos
           fi
 
       - name: Upload artifact
