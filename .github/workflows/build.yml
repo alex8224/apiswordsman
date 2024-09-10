@@ -33,9 +33,9 @@ jobs:
       - name: Build for ${{ matrix.os }}
         run: |
           if [ "${{ matrix.os }}" == "macos-latest" ]; then
-            GOOS=darwin GOARCH=amd64 go build -o myapp-macos
+            GO111MODULE=on GOOS=darwin GOARCH=amd64 go build -o myapp-macos
           elif [ "${{ matrix.os }}" == "windows-latest" ]; then
-            GOOS=windows GOARCH=amd64 go build -o myapp.exe
+            GO111MODULE=on GOOS=windows GOARCH=amd64 go build -o myapp.exe
           fi
 
       - name: Upload artifact
