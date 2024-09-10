@@ -31,9 +31,13 @@ jobs:
             ver
           fi
       - name: Build for ${{ matrix.os }}
+        env:
+          GO111MODULE: on
+          GOOS: darwin
+          GOARCH: amd64
         run: |
           if [ "${{ matrix.os }}" == "macos-latest" ]; then
-            env GO111MODULE=on GOOS=darwin GOARCH=amd64 go build -o myapp-macos
+            go build -o myapp-macos
           fi
 
       - name: Upload artifact
