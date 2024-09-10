@@ -1,0 +1,41 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+
+      - name: Build for ${{ matrix.os }}
+        run: |
+          if [ "${{ matrix.os }}" == "macos-latest" ]; then
+            GOOS=darwin GOARCH=amd64 go build -o myapp-macos
+          elif [ "${{ matrix.os }}" == "windows-latest" ]; then
+            GOOS=windows GOARCH=amd64 go build -o myapp.exe
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: myapp-${{ matrix.os }}
+          path: |
+            myapp-macos
+            myapp.exe
