@@ -11,6 +11,7 @@ env:
   GO111MODULE: on
   GOOS: darwin
   GOARCH: amd64
+  CGO_ENABLED: 1
 jobs:
   build:
     runs-on: ${{ matrix.os }}
