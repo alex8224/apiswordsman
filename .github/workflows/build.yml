@@ -41,7 +41,7 @@ jobs:
           GOARCH: amd64
         run: |
           if [ "${{ matrix.os }}" == "macos-latest" ]; then
-            go build -o myapp-macos
+            go build -o build/myapp-macos
           fi
 
       - name: Upload artifact
@@ -50,4 +50,11 @@ jobs:
           name: myapp-${{ matrix.os }}
           path: |
             myapp-macos
-            myapp.exe
+
+      - name: Commit and push changes
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add build/
+          git commit -m "Add built artifact for ${{ matrix.os }}"
+          git push
