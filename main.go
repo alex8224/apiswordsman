@@ -459,7 +459,7 @@ func onReady() {
 	systray.SetIcon(icon.Data)
 	systray.SetTitle("PostMan-消息模拟")
 	systray.SetTooltip("消息模拟")
-	systray.RegisterDbClick(OnTrayDbClick)
+	// systray.RegisterDbClick(OnTrayDbClick)
 
 	mDebug := systray.AddMenuItem("打开调试页", "打开调试页")
 	// 你可以添加一个分隔符

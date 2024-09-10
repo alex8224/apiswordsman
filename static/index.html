@@ -1,709 +1,1024 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>消息发送模拟器</title>
+        <link rel="stylesheet" href="styles.css" />
+    </head>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>消息发送模拟器</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-
-<body>
-    <div class="container">
-        <!-- 标签栏 -->
-        <div class="tabs">
-            <button class="scroll-btn left" onclick="scrollTabs('left')">&lt;</button>
-            <div class="tabs-container">
-                <ul id="tab-list">
-                    <li class="tab add-tab" onclick="showAddTabDialog()">+</li>
-                </ul>
+    <body>
+        <div class="container">
+            <!-- 标签栏 -->
+            <div class="tabs">
+                <button class="scroll-btn left" onclick="scrollTabs('left')">
+                    &lt;
+                </button>
+                <div class="tabs-container">
+                    <ul id="tab-list">
+                        <li class="tab add-tab" onclick="showAddTabDialog()">
+                            +
+                        </li>
+                    </ul>
+                </div>
+                <button class="scroll-btn right" onclick="scrollTabs('right')">
+                    &gt;
+                </button>
             </div>
-            <button class="scroll-btn right" onclick="scrollTabs('right')">&gt;</button>
+
+            <!-- 操作面板 -->
+            <div class="toolbar">
+                <div class="form-group">
+                    <label for="endpoint">接口地址：</label>
+                    <input
+                        type="text"
+                        id="endpoint"
+                        placeholder="http://example.com/api"
+                    />
+                </div>
+                <div class="form-group">
+                    <label for="protocol">协议：</label>
+                    <select id="protocol" onchange="handleProtocolChange()">
+                        <option value="http">HTTP</option>
+                        <option value="mllp">MLLP</option>
+                        <option value="soap">SOAP</option>
+                    </select>
+                </div>
+                <div class="form-group" id="http-method-group">
+                    <label for="http-method">HTTP方法：</label>
+                    <select id="http-method"></select>
+                </div>
+                <div class="form-group" id="soap-method-group">
+                    <label for="soap-method">SOAP方法：</label>
+                    <select id="soap-method"></select>
+                </div>
+                <div class="form-group">
+                    <label for="content-format">内容格式：</label>
+                    <select id="content-format">
+                        <option value="json">JSON</option>
+                        <option value="hl7">HL7</option>
+                        <option value="xml">XML</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="sendRequest()">发送</button>
+                <button class="btn" onclick="clearForm()">清空</button>
+                <button
+                    class="btn"
+                    id="add-header-btn"
+                    style="display: none"
+                    onclick="addHeader()"
+                >
+                    添加Header
+                </button>
+                <button
+                    class="btn"
+                    id="add-mock-header-btn"
+                    onclick="showNewServerForm()"
+                >
+                    模拟服务
+                </button>
+                <button
+                    class="btn"
+                    id="list-mock-server"
+                    onclick="listMockServer()"
+                >
+                    模拟服务列表
+                </button>
+            </div>
+
+            <!-- HTTP Headers 区域 -->
+            <div id="http-headers-area" style="display: none">
+                <div id="headers-container"></div>
+            </div>
+
+            <!-- 第二部分：请求正文 -->
+            <div class="request-body">
+                <label for="request-content">请求正文：</label>
+                <textarea id="request-content" rows="10"></textarea>
+            </div>
+
+            <!-- 第三部分：响应 -->
+            <div class="response">
+                <label for="response-content">响应内容：</label>
+                <textarea id="response-content" rows="10" readonly></textarea>
+            </div>
         </div>
 
-        <!-- 操作面板 -->
-        <div class="toolbar">
+        <!-- 新增标签对话框 -->
+        <div id="add-tab-dialog" style="display: none">
             <div class="form-group">
-                <label for="endpoint">接口地址：</label>
-                <input type="text" id="endpoint" placeholder="http://example.com/api">
+                <label for="new-tab-title">标题：</label>
+                <input type="text" id="new-tab-title" />
             </div>
             <div class="form-group">
-                <label for="protocol">协议：</label>
-                <select id="protocol" onchange="handleProtocolChange()">
+                <label for="new-tab-endpoint">接口地址：</label>
+                <input
+                    type="text"
+                    id="new-tab-endpoint"
+                    placeholder="http://example.com/api"
+                />
+            </div>
+            <div class="form-group">
+                <label for="new-tab-protocol">协议：</label>
+                <select
+                    id="new-tab-protocol"
+                    onchange="handleNewTabProtocolChange()"
+                >
                     <option value="http">HTTP</option>
                     <option value="mllp">MLLP</option>
                     <option value="soap">SOAP</option>
                 </select>
             </div>
-            <div class="form-group" id="http-method-group">
-                <label for="http-method">HTTP方法：</label>
-                <select id="http-method"></select>
-            </div>
-            <div class="form-group" id="soap-method-group">
-                <label for="soap-method">SOAP方法：</label>
-                <select id="soap-method"></select>
-            </div>
-            <div class="form-group">
-                <label for="content-format">内容格式：</label>
-                <select id="content-format">
-                    <option value="json">JSON</option>
-                    <option value="hl7">HL7</option>
-                    <option value="xml">XML</option>
+            <div class="form-group" id="new-http-method-group">
+                <label for="new-tab-http-method">HTTP方法：</label>
+                <select id="new-tab-http-method">
+                    <option value="GET">GET</option>
+                    <option value="POST">POST</option>
+                    <option value="PUT">PUT</option>
+                    <option value="DELETE">DELETE</option>
                 </select>
             </div>
-            <button class="btn" onclick="sendRequest()">发送</button>
-            <button class="btn" onclick="clearForm()">清空</button>
-            <button class="btn" id="add-header-btn" style="display: none;" onclick="addHeader()">添加Header</button>
-            <button class="btn" id="add-mock-header-btn" onclick="showNewServerForm()">模拟服务</button>
-        </div>
-
-        <!-- HTTP Headers 区域 -->
-        <div id="http-headers-area" style="display: none;">
-            <div id="headers-container"></div>
-        </div>
-
-        <!-- 第二部分：请求正文 -->
-        <div class="request-body">
-            <label for="request-content">请求正文：</label>
-            <textarea id="request-content" rows="10"></textarea>
-        </div>
-
-        <!-- 第三部分：响应 -->
-        <div class="response">
-            <label for="response-content">响应内容：</label>
-            <textarea id="response-content" rows="10" readonly></textarea>
-        </div>
-    </div>
-
-    <!-- 新增标签对话框 -->
-    <div id="add-tab-dialog" style="display: none;">
-        <div class="form-group">
-            <label for="new-tab-title">标题：</label>
-            <input type="text" id="new-tab-title">
-        </div>
-        <div class="form-group">
-            <label for="new-tab-endpoint">接口地址：</label>
-            <input type="text" id="new-tab-endpoint" placeholder="http://example.com/api">
-        </div>
-        <div class="form-group">
-            <label for="new-tab-protocol">协议：</label>
-            <select id="new-tab-protocol" onchange="handleNewTabProtocolChange()">
-                <option value="http">HTTP</option>
-                <option value="mllp">MLLP</option>
-                <option value="soap">SOAP</option>
-            </select>
-        </div>
-        <div class="form-group" id="new-http-method-group">
-            <label for="new-tab-http-method">HTTP方法：</label>
-            <select id="new-tab-http-method">
-                <option value="GET">GET</option>
-                <option value="POST">POST</option>
-                <option value="PUT">PUT</option>
-                <option value="DELETE">DELETE</option>
-            </select>
-        </div>
-        <div class="form-group" id="new-soap-method-group" style="display: none;">
-            <label for="new-tab-soap-method">SOAP方法：</label>
-            <select id="new-tab-soap-method"></select>
-        </div>
-        <button class="btn" onclick="addNewTab()">添加</button>
-        <button class="btn" onclick="closeDialog()">取消</button>
-    </div>
-
-     <!-- 新增服务模态框 -->
-     <div id="new-server-modal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <span class="close" onclick="closeNewServerForm()">&times;</span>
-            <h3>新增服务</h3>
-            <div class="form-group">
-                <label for="new-server-port">端口号：</label>
-                <input type="text" id="new-server-port" placeholder="服务端口号">
+            <div
+                class="form-group"
+                id="new-soap-method-group"
+                style="display: none"
+            >
+                <label for="new-tab-soap-method">SOAP方法：</label>
+                <select id="new-tab-soap-method"></select>
             </div>
-            <div class="form-group">
-                <label for="new-server-type">类型：</label>
-                <select id="new-server-type">
-                    <option value="http">HTTP</option>
-                    <option value="tcp">TCP</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="new-server-mock-data">模拟返回数据：</label>
-                <textarea id="new-server-mock-data" placeholder="请求该服务时模拟返回的数据" rows="5"></textarea>
-            </div>
-            <div class="form-group">
-                <label for="new-server-headers">返回的Header数据：</label>
-                <div id="headers-container">
-                    <div class="header-row">
-                        <input type="text" class="header-key" placeholder="Key">
-                        <input type="text" class="header-value" placeholder="Value">
-                        <button class="btn" onclick="removeHeader(this)">删除</button>
-                    </div>
+            <button class="btn" onclick="addNewTab()">添加</button>
+            <button class="btn" onclick="closeDialog()">取消</button>
+        </div>
+
+        <!-- 新增服务模态框 -->
+        <div id="new-server-modal" class="modal" style="display: none">
+            <div class="modal-content">
+                <span class="close" onclick="closeNewServerForm()"
+                    >&times;</span
+                >
+                <h3>新增服务</h3>
+                <div class="form-group">
+                    <label for="new-server-port">端口号：</label>
+                    <input
+                        type="text"
+                        id="new-server-port"
+                        placeholder="服务端口号"
+                    />
                 </div>
-                <button class="btn" onclick="addHeaderRow()">新增Header</button>
+                <div class="form-group">
+                    <label for="new-server-type">类型：</label>
+                    <select id="new-server-type">
+                        <option value="http">HTTP</option>
+                        <option value="tcp">TCP</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="new-server-mock-data">模拟返回数据：</label>
+                    <textarea
+                        id="new-server-mock-data"
+                        placeholder="请求该服务时模拟返回的数据"
+                        rows="5"
+                    ></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="new-server-headers">返回的Header数据：</label>
+                    <div id="headers-container">
+                        <div class="header-row">
+                            <input
+                                type="text"
+                                class="header-key"
+                                placeholder="Key"
+                            />
+                            <input
+                                type="text"
+                                class="header-value"
+                                placeholder="Value"
+                            />
+                            <button class="btn" onclick="removeHeader(this)">
+                                删除
+                            </button>
+                        </div>
+                    </div>
+                    <button class="btn" onclick="addHeaderRow()">
+                        新增Header
+                    </button>
+                </div>
+                <button class="btn" onclick="createNewServer()">
+                    创建服务
+                </button>
+                <button class="btn" onclick="closeNewServerForm()">取消</button>
             </div>
-            <button class="btn" onclick="createNewServer()">创建服务</button>
-            <button class="btn" onclick="closeNewServerForm()">取消</button>
+
+            <!-- 模拟服务列表弹框 -->
+            <div id="mock-server-list-modal" class="modal">
+                <div class="modal-content">
+                    <span class="close" onclick="closeMockServerListModal()"
+                        >&times;</span
+                    >
+                    <h3>已启动的服务列表</h3>
+                    <table
+                        id="server-list-table"
+                        style="width: 100%; border-collapse: collapse"
+                    >
+                        <thead>
+                            <tr>
+                                <th
+                                    style="
+                                        border: 1px solid #ddd;
+                                        padding: 8px;
+                                        text-align: left;
+                                    "
+                                >
+                                    地址
+                                </th>
+                                <th
+                                    style="
+                                        border: 1px solid #ddd;
+                                        padding: 8px;
+                                        text-align: left;
+                                    "
+                                >
+                                    端口
+                                </th>
+                                <th
+                                    style="
+                                        border: 1px solid #ddd;
+                                        padding: 8px;
+                                        text-align: left;
+                                    "
+                                >
+                                    状态
+                                </th>
+                                <th
+                                    style="
+                                        border: 1px solid #ddd;
+                                        padding: 8px;
+                                        text-align: left;
+                                    "
+                                >
+                                    操作
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 服务列表将动态填充到这里 -->
+                        </tbody>
+                    </table>
+                    <button class="btn" onclick="closeMockServerListModal()">
+                        关闭
+                    </button>
+                </div>
+            </div>
         </div>
-    </div>
 
-    <script>
-        let currentTabId;
-        let tabData = {};
+        <script>
+            let currentTabId;
+            let tabData = {};
 
-        document.getElementById('http-method-group').style.display = 'none';
-        document.getElementById('soap-method-group').style.display = 'none';
+            document.getElementById("http-method-group").style.display = "none";
+            document.getElementById("soap-method-group").style.display = "none";
 
-        document.addEventListener('DOMContentLoaded', function () {
-            loadTabs();
-            adjustTabs();
-            document.getElementById('tab-list').addEventListener('scroll', checkScrollButtons);
-        });
-
-        // 在窗口调整大小时调用此函数
-        window.addEventListener('resize', adjustTabs);
-
-        function adjustTabs() {
-            const tabList = document.getElementById('tab-list');
-            const tabs = tabList.querySelectorAll('.tab:not(.add-tab)');
-            const tabsContainer = document.querySelector('.tabs-container');
-            const availableWidth = tabsContainer.offsetWidth - 42; // 减去新增标签按钮的宽度
-            const leftBtn = document.querySelector('.scroll-btn.left');
-            const rightBtn = document.querySelector('.scroll-btn.right');
-
-            let totalWidth = 0;
-            tabs.forEach(tab => {
-                totalWidth += tab.offsetWidth + 2; // 2px for margin-right
+            document.addEventListener("DOMContentLoaded", function () {
+                loadTabs();
+                adjustTabs();
+                document
+                    .getElementById("tab-list")
+                    .addEventListener("scroll", checkScrollButtons);
             });
 
-            if (totalWidth > availableWidth) {
-                const tabWidth = Math.floor(availableWidth / tabs.length) - 2;
-                tabs.forEach(tab => {
-                    tab.style.width = `${tabWidth}px`;
+            // 在窗口调整大小时调用此函数
+            window.addEventListener("resize", adjustTabs);
+
+            function adjustTabs() {
+                const tabList = document.getElementById("tab-list");
+                const tabs = tabList.querySelectorAll(".tab:not(.add-tab)");
+                const tabsContainer = document.querySelector(".tabs-container");
+                const availableWidth = tabsContainer.offsetWidth - 42; // 减去新增标签按钮的宽度
+                const leftBtn = document.querySelector(".scroll-btn.left");
+                const rightBtn = document.querySelector(".scroll-btn.right");
+
+                let totalWidth = 0;
+                tabs.forEach((tab) => {
+                    totalWidth += tab.offsetWidth + 2; // 2px for margin-right
                 });
-                leftBtn.classList.remove('hidden');
-                rightBtn.classList.remove('hidden');
-            } else {
-                tabs.forEach(tab => {
-                    tab.style.width = '';
-                });
-                leftBtn.classList.add('hidden');
-                rightBtn.classList.add('hidden');
-            }
 
-            checkScrollButtons();
-        }
-
-        function scrollTabs(direction) {
-            const tabList = document.getElementById('tab-list');
-            const tabsContainer = document.querySelector('.tabs-container');
-            const scrollAmount = tabsContainer.offsetWidth / 2;
-
-            if (direction === 'left') {
-                tabList.scrollLeft -= scrollAmount;
-            } else {
-                tabList.scrollLeft += scrollAmount;
-            }
-
-            checkScrollButtons();
-        }
-
-        function checkScrollButtons() {
-            debugger;
-            const tabList = document.getElementById('tab-list');
-            const leftBtn = document.querySelector('.scroll-btn.left');
-            const rightBtn = document.querySelector('.scroll-btn.right');
-
-            leftBtn.style.display = tabList.scrollLeft > 0 ? 'block' : 'none';
-            rightBtn.style.display = tabList.scrollLeft < tabList.scrollWidth - tabList.offsetWidth ? 'block' : 'none';
-        }
-
-
-        function adjustTabWidths() {
-            const tabList = document.getElementById('tab-list');
-            const tabs = tabList.querySelectorAll('.tab:not(.add-tab)');
-            const addTab = tabList.querySelector('.add-tab');
-            const availableWidth = tabList.offsetWidth - addTab.offsetWidth;
-            const tabCount = tabs.length;
-
-            if (tabCount === 0) return;
-
-            let totalWidth = 0;
-            tabs.forEach(tab => {
-                totalWidth += tab.offsetWidth;
-            });
-
-            if (totalWidth > availableWidth) {
-                const newWidth = Math.floor(availableWidth / tabCount);
-                tabs.forEach(tab => {
-                    tab.style.width = `${newWidth}px`;
-                });
-            } else {
-                tabs.forEach(tab => {
-                    tab.style.width = ''; // 重置为默认宽度
-                });
-            }
-        }
-
-        function saveCurrentTabData() {
-            if (currentTabId) {
-                const tabId = currentTabId;
-                const headers = Array.from(document.querySelectorAll('#headers-container .header-form-group')).map(group => ({
-                    key: group.querySelector('.header-key').value,
-                    value: group.querySelector('.header-value').value
-                }));
-                tabData[tabId] = {
-                    endpoint: document.getElementById('endpoint').value,
-                    protocol: document.getElementById('protocol').value,
-                    httpMethod: document.getElementById('http-method').value,
-                    soapMethod: document.getElementById('soap-method').value,
-                    httpHeaders: headers,
-                    contentFormat: document.getElementById('content-format').value,
-                    requestContent: document.getElementById('request-content').value,
-                    responseContent: document.getElementById('response-content').value
-                };
-                localStorage.setItem('tabData', JSON.stringify(tabData));
-                localStorage.setItem('lastTabId', currentTabId);
-            }
-        }
-
-        function loadTabData(tabId) {
-            if (tabData[tabId]) {
-                document.getElementById('endpoint').value = tabData[tabId].endpoint || '';
-                document.getElementById('protocol').value = tabData[tabId].protocol || 'http';
-                document.getElementById('content-format').value = tabData[tabId].contentFormat || 'json';
-                document.getElementById('request-content').value = tabData[tabId].requestContent || '';
-                document.getElementById('response-content').value = tabData[tabId].responseContent || '';
-                handleProtocolChange(tabData[tabId].protocol, tabData[tabId].httpMethod, tabData[tabId].soapMethod);
-                loadHeaders(tabData[tabId].httpHeaders);
-            } else {
-                clearForm();
-            }
-        }
-
-        function loadHeaders(headers) {
-            const headersContainer = document.getElementById('headers-container');
-            headersContainer.innerHTML = '';
-            if (headers && headers.length) {
-                headers.forEach(header => addHeader(header.key, header.value));
-            }
-        }
-
-        async function handleProtocolChange(protocol, savedHttpMethod, savedSoapMethod) {
-            protocol = protocol || document.getElementById('protocol').value;
-            var httpMethodGroup = document.getElementById('http-method-group');
-            var soapMethodGroup = document.getElementById('soap-method-group');
-            var httpHeadersArea = document.getElementById('http-headers-area');
-            var httpMethodSelect = document.getElementById('http-method');
-            var soapMethodSelect = document.getElementById('soap-method');
-            var addHeaderBtn = document.getElementById('add-header-btn');
-            var endpoint = document.getElementById('endpoint').value;
-
-            if (protocol === 'http') {
-                httpMethodGroup.style.display = 'block';
-                soapMethodGroup.style.display = 'none';
-                httpHeadersArea.style.display = 'block';
-                addHeaderBtn.style.display = 'inline-block';
-                httpMethodSelect.innerHTML = '';
-                ['GET', 'POST', 'PUT', 'DELETE'].forEach(method => {
-                    var option = document.createElement('option');
-                    option.value = method;
-                    option.text = method;
-                    httpMethodSelect.add(option);
-                });
-                if (savedHttpMethod) {
-                    httpMethodSelect.value = savedHttpMethod;
-                }
-            } else if (protocol === 'soap') {
-                httpMethodGroup.style.display = 'none';
-                soapMethodGroup.style.display = 'block';
-                httpHeadersArea.style.display = 'none';
-                addHeaderBtn.style.display = 'none';
-                try {
-                    const response = await fetch('/wsdl-methods', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ url: endpoint })
+                if (totalWidth > availableWidth) {
+                    const tabWidth =
+                        Math.floor(availableWidth / tabs.length) - 2;
+                    tabs.forEach((tab) => {
+                        tab.style.width = `${tabWidth}px`;
                     });
-                    const result = await response.json();
-                    if (result.status === 200 && Array.isArray(result.resp)) {
-                        soapMethodSelect.innerHTML = '';
-                        result.resp.forEach(method => {
-                            var option = document.createElement('option');
-                            option.value = method;
-                            option.text = method;
-                            soapMethodSelect.add(option);
-                        });
-                        if (savedSoapMethod) {
-                            soapMethodSelect.value = savedSoapMethod;
-                        }
-                    } else {
-                        console.error('Error fetching SOAP methods:', result.errMsg);
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
+                    leftBtn.classList.remove("hidden");
+                    rightBtn.classList.remove("hidden");
+                } else {
+                    tabs.forEach((tab) => {
+                        tab.style.width = "";
+                    });
+                    leftBtn.classList.add("hidden");
+                    rightBtn.classList.add("hidden");
                 }
-            } else {
-                httpMethodGroup.style.display = 'none';
-                soapMethodGroup.style.display = 'none';
-                httpHeadersArea.style.display = 'none';
-                addHeaderBtn.style.display = 'none';
+
+                checkScrollButtons();
             }
-        }
 
-        function addHeader(key = '', value = '') {
-            const headersContainer = document.getElementById('headers-container');
-            const headerGroup = document.createElement('div');
-            headerGroup.className = 'header-form-group';
-            headerGroup.innerHTML = `
-                <input type="text" class="header-key" placeholder="Header Key" value="${key}">
-                <input type="text" class="header-value" placeholder="Header Value" value="${value}">
-                <button class="btn remove-header-btn" onclick="removeHeader(this)">删除</button>
-            `;
-            headersContainer.appendChild(headerGroup);
-        }
+            function scrollTabs(direction) {
+                const tabList = document.getElementById("tab-list");
+                const tabsContainer = document.querySelector(".tabs-container");
+                const scrollAmount = tabsContainer.offsetWidth / 2;
 
-        function removeHeader(button) {
-            const headerGroup = button.parentNode;
-            headerGroup.parentNode.removeChild(headerGroup);
-        }
+                if (direction === "left") {
+                    tabList.scrollLeft -= scrollAmount;
+                } else {
+                    tabList.scrollLeft += scrollAmount;
+                }
 
-        function transformReqBody(format, body) {
-            if (format == "hl7") {
-                return body.replaceAll('\n', '\r');
-            } else {
-                return body;
+                checkScrollButtons();
             }
-        }
 
+            function checkScrollButtons() {
+                debugger;
+                const tabList = document.getElementById("tab-list");
+                const leftBtn = document.querySelector(".scroll-btn.left");
+                const rightBtn = document.querySelector(".scroll-btn.right");
 
-        async function sendRequest() {
-            saveCurrentTabData();
-            var endpoint = document.getElementById('endpoint').value;
-            var protocol = document.getElementById('protocol').value;
-            var contentFormat = document.getElementById('content-format').value;
-            var requestBody = document.getElementById('request-content').value;
-            var url, data, headers = {};
-            console.log("before", contentFormat, requestBody);
-            requestBody = transformReqBody(contentFormat, requestBody)
-            console.log("after ", contentFormat, requestBody)
+                leftBtn.style.display =
+                    tabList.scrollLeft > 0 ? "block" : "none";
+                rightBtn.style.display =
+                    tabList.scrollLeft <
+                    tabList.scrollWidth - tabList.offsetWidth
+                        ? "block"
+                        : "none";
+            }
 
-            if (protocol === 'http') {
-                var httpMethod = document.getElementById('http-method').value;
-                const headerGroups = document.querySelectorAll('#headers-container .header-form-group');
-                if (headerGroups.length > 0) {
-                    headerGroups.forEach(group => {
-                        const key = group.querySelector('.header-key').value;
-                        const value = group.querySelector('.header-value').value;
-                        if (key && value) {
-                            headers[key] = value;
-                        }
+            function adjustTabWidths() {
+                const tabList = document.getElementById("tab-list");
+                const tabs = tabList.querySelectorAll(".tab:not(.add-tab)");
+                const addTab = tabList.querySelector(".add-tab");
+                const availableWidth = tabList.offsetWidth - addTab.offsetWidth;
+                const tabCount = tabs.length;
+
+                if (tabCount === 0) return;
+
+                let totalWidth = 0;
+                tabs.forEach((tab) => {
+                    totalWidth += tab.offsetWidth;
+                });
+
+                if (totalWidth > availableWidth) {
+                    const newWidth = Math.floor(availableWidth / tabCount);
+                    tabs.forEach((tab) => {
+                        tab.style.width = `${newWidth}px`;
+                    });
+                } else {
+                    tabs.forEach((tab) => {
+                        tab.style.width = ""; // 重置为默认宽度
                     });
                 }
-                url = '/http';
-                data = JSON.stringify({
-                    url: endpoint,
-                    method: httpMethod,
-                    req: requestBody,
-                    req_headers: headers
-                });
-            } else if (protocol === 'mllp') {
-                url = '/mllp';
-                data = JSON.stringify({
-                    url: endpoint,
-                    req: requestBody
-                });
-            } else if (protocol === 'soap') {
-                var soapMethod = document.getElementById('soap-method').value;
-                url = '/soap';
-                data = JSON.stringify({
-                    url: endpoint,
-                    method: soapMethod,
-                    req: requestBody
-                });
             }
 
-            try {
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        "Content-Type": "application/json",
-                        ...headers
-                    },
-                    body: data
-                });
-                const result = await response.json();
-                if (result.status === 200) {
-                    if (protocol === 'mllp') {
-                        document.getElementById('response-content').value = result.resp;
-                    } else {
-                        document.getElementById('response-content').value = JSON.stringify(result, null, 2);
-                    }
-                } else {
-                    document.getElementById('response-content').value = JSON.stringify(result, null, 2);
+            function saveCurrentTabData() {
+                if (currentTabId) {
+                    const tabId = currentTabId;
+                    const headers = Array.from(
+                        document.querySelectorAll(
+                            "#headers-container .header-form-group",
+                        ),
+                    ).map((group) => ({
+                        key: group.querySelector(".header-key").value,
+                        value: group.querySelector(".header-value").value,
+                    }));
+                    tabData[tabId] = {
+                        endpoint: document.getElementById("endpoint").value,
+                        protocol: document.getElementById("protocol").value,
+                        httpMethod:
+                            document.getElementById("http-method").value,
+                        soapMethod:
+                            document.getElementById("soap-method").value,
+                        httpHeaders: headers,
+                        contentFormat:
+                            document.getElementById("content-format").value,
+                        requestContent:
+                            document.getElementById("request-content").value,
+                        responseContent:
+                            document.getElementById("response-content").value,
+                    };
+                    localStorage.setItem("tabData", JSON.stringify(tabData));
+                    localStorage.setItem("lastTabId", currentTabId);
                 }
-                saveCurrentTabData();
-            } catch (error) {
-                console.error('Error:', error);
-                document.getElementById('response-content').value = '请求失败，请检查控制台日志。';
-                saveCurrentTabData();
             }
-        }
 
-        function clearForm() {
-            document.getElementById('endpoint').value = '';
-            document.getElementById('protocol').value = 'http';
-            document.getElementById('content-format').value = 'json';
-            document.getElementById('http-method').innerHTML = '<option value="GET">GET</option><option value="POST">POST</option><option value="PUT">PUT</option><option value="DELETE">DELETE</option>';
-            document.getElementById('soap-method').innerHTML = '';
-            document.getElementById('headers-container').innerHTML = '';
-            document.getElementById('request-content').value = '';
-            document.getElementById('response-content').value = '';
-            handleProtocolChange();
-        }
-
-        function loadTabs() {
-            tabData = JSON.parse(localStorage.getItem('tabData')) || {};
-            const tabs = JSON.parse(localStorage.getItem('tabs')) || [];
-            const lastTabId = localStorage.getItem('lastTabId');
-            tabs.forEach(tab => createTab(tab.id, tab.title, false));
-            if (lastTabId && tabData[lastTabId]) {
-                activateTab(lastTabId);
-            } else if (tabs.length > 0) {
-                activateTab(tabs[0].id);
-            }
-            adjustTabs();
-        }
-
-        function saveTabs() {
-            const tabs = [];
-            document.querySelectorAll('#tab-list .tab').forEach(tab => {
-                if (!tab.classList.contains('add-tab')) {
-                    tabs.push({ id: tab.dataset.id, title: tab.textContent });
-                }
-            });
-            localStorage.setItem('tabs', JSON.stringify(tabs));
-        }
-
-        function createTab(id, title, activate = true) {
-            const tabList = document.getElementById('tab-list');
-            const tab = document.createElement('li');
-            tab.className = 'tab';
-            tab.dataset.id = id;
-            tab.textContent = title;
-            tab.onclick = function () { activateTab(id); };
-            tab.oncontextmenu = function (event) {
-                event.preventDefault();
-                showContextMenu(event, id);
-            };
-            tabList.insertBefore(tab, document.querySelector('.add-tab'));
-            if (activate) activateTab(id);
-            adjustTabs();
-        }
-
-        function activateTab(id) {
-            saveCurrentTabData();
-            currentTabId = id;
-            document.querySelectorAll('#tab-list .tab').forEach(tab => tab.classList.remove('active'));
-            document.querySelector(`.tab[data-id="${id}"]`).classList.add('active');
-            loadTabData(id);
-        }
-
-        function showContextMenu(event, id) {
-            const contextMenu = document.createElement('ul');
-            contextMenu.className = 'context-menu';
-            const renameOption = document.createElement('li');
-            renameOption.textContent = '重命名';
-            renameOption.onclick = function () { renameTab(id); };
-            const closeOption = document.createElement('li');
-            closeOption.textContent = '关闭';
-            closeOption.onclick = function () { closeTab(id); };
-            contextMenu.appendChild(renameOption);
-            contextMenu.appendChild(closeOption);
-            document.body.appendChild(contextMenu);
-            contextMenu.style.top = `${event.clientY}px`;
-            contextMenu.style.left = `${event.clientX}px`;
-
-            document.addEventListener('click', function () {
-                document.body.removeChild(contextMenu);
-            }, { once: true });
-        }
-
-        function renameTab(id) {
-            const newName = prompt('请输入新标签名：');
-            if (newName) {
-                document.querySelector(`.tab[data-id="${id}"]`).textContent = newName;
-                saveTabs();
-            }
-        }
-
-        function closeTab(id) {
-            const tab = document.querySelector(`.tab[data-id="${id}"]`);
-            tab.parentNode.removeChild(tab);
-            delete tabData[id];
-            saveTabs();
-            saveCurrentTabData();
-            if (tab.classList.contains('active')) {
-                if (document.querySelectorAll('#tab-list .tab').length > 1) {
-                    activateTab(document.querySelector('#tab-list .tab:not(.add-tab)').dataset.id);
+            function loadTabData(tabId) {
+                if (tabData[tabId]) {
+                    document.getElementById("endpoint").value =
+                        tabData[tabId].endpoint || "";
+                    document.getElementById("protocol").value =
+                        tabData[tabId].protocol || "http";
+                    document.getElementById("content-format").value =
+                        tabData[tabId].contentFormat || "json";
+                    document.getElementById("request-content").value =
+                        tabData[tabId].requestContent || "";
+                    document.getElementById("response-content").value =
+                        tabData[tabId].responseContent || "";
+                    handleProtocolChange(
+                        tabData[tabId].protocol,
+                        tabData[tabId].httpMethod,
+                        tabData[tabId].soapMethod,
+                    );
+                    loadHeaders(tabData[tabId].httpHeaders);
                 } else {
-                    currentTabId = null;
                     clearForm();
                 }
             }
 
-        }
-
-        function showAddTabDialog() {
-            document.getElementById('add-tab-dialog').style.display = 'block';
-        }
-
-        function closeDialog() {
-            document.getElementById('add-tab-dialog').style.display = 'none';
-            document.getElementById('new-tab-title').value = '';
-            document.getElementById('new-tab-endpoint').value = '';
-            document.getElementById('new-tab-protocol').value = 'http';
-            document.getElementById('new-tab-http-method').value = 'GET';
-            document.getElementById('new-tab-soap-method').innerHTML = '';
-            document.getElementById('new-http-method-group').style.display = 'block';
-            document.getElementById('new-soap-method-group').style.display = 'none';
-        }
-
-        function addNewTab() {
-            debugger;
-            const title = document.getElementById('new-tab-title').value;
-            const endpoint = document.getElementById('new-tab-endpoint').value;
-            const protocol = document.getElementById('new-tab-protocol').value;
-            const httpMethod = document.getElementById('new-tab-http-method').value;
-            const soapMethod = document.getElementById('new-tab-soap-method').value;
-            if (title) {
-                const id = `tab-${Date.now()}`;
-                tabData[id] = {
-                    endpoint: endpoint,
-                    protocol: protocol,
-                    httpMethod: protocol === 'http' ? httpMethod : '',
-                    soapMethod: protocol === 'soap' ? soapMethod : '',
-                    httpHeaders: [],
-                    contentFormat: 'json',
-                    requestContent: '',
-                    responseContent: ''
-                };
-                createTab(id, title);
-                saveTabs();
-                closeDialog();
+            function loadHeaders(headers) {
+                const headersContainer =
+                    document.getElementById("headers-container");
+                headersContainer.innerHTML = "";
+                if (headers && headers.length) {
+                    headers.forEach((header) =>
+                        addHeader(header.key, header.value),
+                    );
+                }
             }
 
-        }
+            async function handleProtocolChange(
+                protocol,
+                savedHttpMethod,
+                savedSoapMethod,
+            ) {
+                protocol =
+                    protocol || document.getElementById("protocol").value;
+                var httpMethodGroup =
+                    document.getElementById("http-method-group");
+                var soapMethodGroup =
+                    document.getElementById("soap-method-group");
+                var httpHeadersArea =
+                    document.getElementById("http-headers-area");
+                var httpMethodSelect = document.getElementById("http-method");
+                var soapMethodSelect = document.getElementById("soap-method");
+                var addHeaderBtn = document.getElementById("add-header-btn");
+                var endpoint = document.getElementById("endpoint").value;
 
-        async function handleNewTabProtocolChange() {
-            const protocol = document.getElementById('new-tab-protocol').value;
-            const httpMethodGroup = document.getElementById('new-http-method-group');
-            const soapMethodGroup = document.getElementById('new-soap-method-group');
-            const soapMethodSelect = document.getElementById('new-tab-soap-method');
-            const endpoint = document.getElementById('new-tab-endpoint').value;
+                if (protocol === "http") {
+                    httpMethodGroup.style.display = "block";
+                    soapMethodGroup.style.display = "none";
+                    httpHeadersArea.style.display = "block";
+                    addHeaderBtn.style.display = "inline-block";
+                    httpMethodSelect.innerHTML = "";
+                    ["GET", "POST", "PUT", "DELETE"].forEach((method) => {
+                        var option = document.createElement("option");
+                        option.value = method;
+                        option.text = method;
+                        httpMethodSelect.add(option);
+                    });
+                    if (savedHttpMethod) {
+                        httpMethodSelect.value = savedHttpMethod;
+                    }
+                } else if (protocol === "soap") {
+                    httpMethodGroup.style.display = "none";
+                    soapMethodGroup.style.display = "block";
+                    httpHeadersArea.style.display = "none";
+                    addHeaderBtn.style.display = "none";
+                    try {
+                        const response = await fetch("/wsdl-methods", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({ url: endpoint }),
+                        });
+                        const result = await response.json();
+                        if (
+                            result.status === 200 &&
+                            Array.isArray(result.resp)
+                        ) {
+                            soapMethodSelect.innerHTML = "";
+                            result.resp.forEach((method) => {
+                                var option = document.createElement("option");
+                                option.value = method;
+                                option.text = method;
+                                soapMethodSelect.add(option);
+                            });
+                            if (savedSoapMethod) {
+                                soapMethodSelect.value = savedSoapMethod;
+                            }
+                        } else {
+                            console.error(
+                                "Error fetching SOAP methods:",
+                                result.errMsg,
+                            );
+                        }
+                    } catch (error) {
+                        console.error("Error:", error);
+                    }
+                } else {
+                    httpMethodGroup.style.display = "none";
+                    soapMethodGroup.style.display = "none";
+                    httpHeadersArea.style.display = "none";
+                    addHeaderBtn.style.display = "none";
+                }
+            }
 
-            if (protocol === 'http') {
-                httpMethodGroup.style.display = 'block';
-                soapMethodGroup.style.display = 'none';
-            } else if (protocol === 'soap') {
-                httpMethodGroup.style.display = 'none';
-                soapMethodGroup.style.display = 'block';
+            function addHeader(key = "", value = "") {
+                const headersContainer =
+                    document.getElementById("headers-container");
+                const headerGroup = document.createElement("div");
+                headerGroup.className = "header-form-group";
+                headerGroup.innerHTML = `
+                <input type="text" class="header-key" placeholder="Header Key" value="${key}">
+                <input type="text" class="header-value" placeholder="Header Value" value="${value}">
+                <button class="btn remove-header-btn" onclick="removeHeader(this)">删除</button>
+            `;
+                headersContainer.appendChild(headerGroup);
+            }
+
+            function removeHeader(button) {
+                const headerGroup = button.parentNode;
+                headerGroup.parentNode.removeChild(headerGroup);
+            }
+
+            function transformReqBody(format, body) {
+                if (format == "hl7") {
+                    return body.replaceAll("\n", "\r");
+                } else {
+                    return body;
+                }
+            }
+
+            async function sendRequest() {
+                saveCurrentTabData();
+                var endpoint = document.getElementById("endpoint").value;
+                var protocol = document.getElementById("protocol").value;
+                var contentFormat =
+                    document.getElementById("content-format").value;
+                var requestBody =
+                    document.getElementById("request-content").value;
+                var url,
+                    data,
+                    headers = {};
+                console.log("before", contentFormat, requestBody);
+                requestBody = transformReqBody(contentFormat, requestBody);
+                console.log("after ", contentFormat, requestBody);
+
+                if (protocol === "http") {
+                    var httpMethod =
+                        document.getElementById("http-method").value;
+                    const headerGroups = document.querySelectorAll(
+                        "#headers-container .header-form-group",
+                    );
+                    if (headerGroups.length > 0) {
+                        headerGroups.forEach((group) => {
+                            const key =
+                                group.querySelector(".header-key").value;
+                            const value =
+                                group.querySelector(".header-value").value;
+                            if (key && value) {
+                                headers[key] = value;
+                            }
+                        });
+                    }
+                    url = "/http";
+                    data = JSON.stringify({
+                        url: endpoint,
+                        method: httpMethod,
+                        req: requestBody,
+                        req_headers: headers,
+                    });
+                } else if (protocol === "mllp") {
+                    url = "/mllp";
+                    data = JSON.stringify({
+                        url: endpoint,
+                        req: requestBody,
+                    });
+                } else if (protocol === "soap") {
+                    var soapMethod =
+                        document.getElementById("soap-method").value;
+                    url = "/soap";
+                    data = JSON.stringify({
+                        url: endpoint,
+                        method: soapMethod,
+                        req: requestBody,
+                    });
+                }
+
                 try {
-                    const response = await fetch('/wsdl-methods', {
-                        method: 'POST',
+                    const response = await fetch(url, {
+                        method: "POST",
                         headers: {
-                            'Content-Type': 'application/json'
+                            "Content-Type": "application/json",
+                            ...headers,
                         },
-                        body: JSON.stringify({ url: endpoint })
+                        body: data,
                     });
                     const result = await response.json();
-                    if (result.status === 200 && Array.isArray(result.resp)) {
-                        soapMethodSelect.innerHTML = '';
-                        result.resp.forEach(method => {
-                            const option = document.createElement('option');
-                            option.value = method;
-                            option.text = method;
-                            soapMethodSelect.add(option);
-                        });
+                    if (result.status === 200) {
+                        if (protocol === "mllp") {
+                            document.getElementById("response-content").value =
+                                result.resp;
+                        } else {
+                            document.getElementById("response-content").value =
+                                JSON.stringify(result, null, 2);
+                        }
                     } else {
-                        console.error('Error fetching SOAP methods:', result.errMsg);
+                        document.getElementById("response-content").value =
+                            JSON.stringify(result, null, 2);
                     }
+                    saveCurrentTabData();
                 } catch (error) {
-                    console.error('Error:', error);
+                    console.error("Error:", error);
+                    document.getElementById("response-content").value =
+                        "请求失败，请检查控制台日志。";
+                    saveCurrentTabData();
                 }
-            } else {
-                httpMethodGroup.style.display = 'none';
-                soapMethodGroup.style.display = 'none';
             }
-        }
-    </script>
 
-    <script>
+            function clearForm() {
+                document.getElementById("endpoint").value = "";
+                document.getElementById("protocol").value = "http";
+                document.getElementById("content-format").value = "json";
+                document.getElementById("http-method").innerHTML =
+                    '<option value="GET">GET</option><option value="POST">POST</option><option value="PUT">PUT</option><option value="DELETE">DELETE</option>';
+                document.getElementById("soap-method").innerHTML = "";
+                document.getElementById("headers-container").innerHTML = "";
+                document.getElementById("request-content").value = "";
+                document.getElementById("response-content").value = "";
+                handleProtocolChange();
+            }
 
-function showNewServerForm() {
-            document.getElementById('new-server-modal').style.display = 'block';
-        }
-
-        function closeNewServerForm() {
-            document.getElementById('new-server-modal').style.display = 'none';
-        }
-
-        function createNewServer() {
-            const port = parseInt(document.getElementById('new-server-port').value, 10);
-            const type = document.getElementById('new-server-type').value;
-            const mockData = document.getElementById('new-server-mock-data').value;
-            const headersContainer = document.getElementById('headers-container');
-            const headers = {};
-            headersContainer.querySelectorAll('.header-row').forEach(row => {
-                const key = row.querySelector('.header-key').value;
-                const value = row.querySelector('.header-value').value;
-                if (key && value) {
-                    headers.push({ key, value });
+            function loadTabs() {
+                tabData = JSON.parse(localStorage.getItem("tabData")) || {};
+                const tabs = JSON.parse(localStorage.getItem("tabs")) || [];
+                const lastTabId = localStorage.getItem("lastTabId");
+                tabs.forEach((tab) => createTab(tab.id, tab.title, false));
+                if (lastTabId && tabData[lastTabId]) {
+                    activateTab(lastTabId);
+                } else if (tabs.length > 0) {
+                    activateTab(tabs[0].id);
                 }
-            });
+                adjustTabs();
+            }
 
-            fetch('http://localhost:8080/createserver', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    port: port,
-                    type: type,
-                    mockData: mockData,
-                    headers: headers
+            function saveTabs() {
+                const tabs = [];
+                document.querySelectorAll("#tab-list .tab").forEach((tab) => {
+                    if (!tab.classList.contains("add-tab")) {
+                        tabs.push({
+                            id: tab.dataset.id,
+                            title: tab.textContent,
+                        });
+                    }
+                });
+                localStorage.setItem("tabs", JSON.stringify(tabs));
+            }
+
+            function createTab(id, title, activate = true) {
+                const tabList = document.getElementById("tab-list");
+                const tab = document.createElement("li");
+                tab.className = "tab";
+                tab.dataset.id = id;
+                tab.textContent = title;
+                tab.onclick = function () {
+                    activateTab(id);
+                };
+                tab.oncontextmenu = function (event) {
+                    event.preventDefault();
+                    showContextMenu(event, id);
+                };
+                tabList.insertBefore(tab, document.querySelector(".add-tab"));
+                if (activate) activateTab(id);
+                adjustTabs();
+            }
+
+            function activateTab(id) {
+                saveCurrentTabData();
+                currentTabId = id;
+                document
+                    .querySelectorAll("#tab-list .tab")
+                    .forEach((tab) => tab.classList.remove("active"));
+                document
+                    .querySelector(`.tab[data-id="${id}"]`)
+                    .classList.add("active");
+                loadTabData(id);
+            }
+
+            function showContextMenu(event, id) {
+                const contextMenu = document.createElement("ul");
+                contextMenu.className = "context-menu";
+                const renameOption = document.createElement("li");
+                renameOption.textContent = "重命名";
+                renameOption.onclick = function () {
+                    renameTab(id);
+                };
+                const closeOption = document.createElement("li");
+                closeOption.textContent = "关闭";
+                closeOption.onclick = function () {
+                    closeTab(id);
+                };
+                contextMenu.appendChild(renameOption);
+                contextMenu.appendChild(closeOption);
+                document.body.appendChild(contextMenu);
+                contextMenu.style.top = `${event.clientY}px`;
+                contextMenu.style.left = `${event.clientX}px`;
+
+                document.addEventListener(
+                    "click",
+                    function () {
+                        document.body.removeChild(contextMenu);
+                    },
+                    { once: true },
+                );
+            }
+
+            function renameTab(id) {
+                const newName = prompt("请输入新标签名：");
+                if (newName) {
+                    document.querySelector(
+                        `.tab[data-id="${id}"]`,
+                    ).textContent = newName;
+                    saveTabs();
+                }
+            }
+
+            function closeTab(id) {
+                const tab = document.querySelector(`.tab[data-id="${id}"]`);
+                tab.parentNode.removeChild(tab);
+                delete tabData[id];
+                saveTabs();
+                saveCurrentTabData();
+                if (tab.classList.contains("active")) {
+                    if (
+                        document.querySelectorAll("#tab-list .tab").length > 1
+                    ) {
+                        activateTab(
+                            document.querySelector(
+                                "#tab-list .tab:not(.add-tab)",
+                            ).dataset.id,
+                        );
+                    } else {
+                        currentTabId = null;
+                        clearForm();
+                    }
+                }
+            }
+
+            function showAddTabDialog() {
+                document.getElementById("add-tab-dialog").style.display =
+                    "block";
+            }
+
+            function closeDialog() {
+                document.getElementById("add-tab-dialog").style.display =
+                    "none";
+                document.getElementById("new-tab-title").value = "";
+                document.getElementById("new-tab-endpoint").value = "";
+                document.getElementById("new-tab-protocol").value = "http";
+                document.getElementById("new-tab-http-method").value = "GET";
+                document.getElementById("new-tab-soap-method").innerHTML = "";
+                document.getElementById("new-http-method-group").style.display =
+                    "block";
+                document.getElementById("new-soap-method-group").style.display =
+                    "none";
+            }
+
+            function addNewTab() {
+                debugger;
+                const title = document.getElementById("new-tab-title").value;
+                const endpoint =
+                    document.getElementById("new-tab-endpoint").value;
+                const protocol =
+                    document.getElementById("new-tab-protocol").value;
+                const httpMethod = document.getElementById(
+                    "new-tab-http-method",
+                ).value;
+                const soapMethod = document.getElementById(
+                    "new-tab-soap-method",
+                ).value;
+                if (title) {
+                    const id = `tab-${Date.now()}`;
+                    tabData[id] = {
+                        endpoint: endpoint,
+                        protocol: protocol,
+                        httpMethod: protocol === "http" ? httpMethod : "",
+                        soapMethod: protocol === "soap" ? soapMethod : "",
+                        httpHeaders: [],
+                        contentFormat: "json",
+                        requestContent: "",
+                        responseContent: "",
+                    };
+                    createTab(id, title);
+                    saveTabs();
+                    closeDialog();
+                }
+            }
+
+            async function handleNewTabProtocolChange() {
+                const protocol =
+                    document.getElementById("new-tab-protocol").value;
+                const httpMethodGroup = document.getElementById(
+                    "new-http-method-group",
+                );
+                const soapMethodGroup = document.getElementById(
+                    "new-soap-method-group",
+                );
+                const soapMethodSelect = document.getElementById(
+                    "new-tab-soap-method",
+                );
+                const endpoint =
+                    document.getElementById("new-tab-endpoint").value;
+
+                if (protocol === "http") {
+                    httpMethodGroup.style.display = "block";
+                    soapMethodGroup.style.display = "none";
+                } else if (protocol === "soap") {
+                    httpMethodGroup.style.display = "none";
+                    soapMethodGroup.style.display = "block";
+                    try {
+                        const response = await fetch("/wsdl-methods", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({ url: endpoint }),
+                        });
+                        const result = await response.json();
+                        if (
+                            result.status === 200 &&
+                            Array.isArray(result.resp)
+                        ) {
+                            soapMethodSelect.innerHTML = "";
+                            result.resp.forEach((method) => {
+                                const option = document.createElement("option");
+                                option.value = method;
+                                option.text = method;
+                                soapMethodSelect.add(option);
+                            });
+                        } else {
+                            console.error(
+                                "Error fetching SOAP methods:",
+                                result.errMsg,
+                            );
+                        }
+                    } catch (error) {
+                        console.error("Error:", error);
+                    }
+                } else {
+                    httpMethodGroup.style.display = "none";
+                    soapMethodGroup.style.display = "none";
+                }
+            }
+        </script>
+
+        <script>
+            function showNewServerForm() {
+                document.getElementById("new-server-modal").style.display =
+                    "block";
+            }
+
+            function closeNewServerForm() {
+                document.getElementById("new-server-modal").style.display =
+                    "none";
+            }
+
+            function createNewServer() {
+                const port = parseInt(
+                    document.getElementById("new-server-port").value,
+                    10,
+                );
+                const type = document.getElementById("new-server-type").value;
+                const mockData = document.getElementById(
+                    "new-server-mock-data",
+                ).value;
+                const headersContainer =
+                    document.getElementById("headers-container");
+                const headers = {};
+                headersContainer
+                    .querySelectorAll(".header-row")
+                    .forEach((row) => {
+                        const key = row.querySelector(".header-key").value;
+                        const value = row.querySelector(".header-value").value;
+                        if (key && value) {
+                            headers.push({ key, value });
+                        }
+                    });
+
+                fetch("http://localhost:8080/createserver", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        port: port,
+                        type: type,
+                        mockData: mockData,
+                        headers: headers,
+                    }),
                 })
-            }).then(data => {
-                  if (data.status === 200) {
-                      let srvUrl = `mockServer.html?port=${port}&type=${type}`;
-                      window.open(srvUrl, `_${port}`);
-                  } else {
-                      alert('创建服务失败');
-                  }
-              }).catch(error => {
-                  console.error('Error:', error);
-                  alert('创建服务失败');
-              });
-        }
+                    .then((data) => {
+                        if (data.status === 200) {
+                            let srvUrl = `mockServer.html?port=${port}&type=${type}`;
+                            window.open(srvUrl, `_${port}`);
+                            closeNewServerForm();
+                        } else {
+                            alert("创建服务失败");
+                        }
+                    })
+                    .catch((error) => {
+                        console.error("Error:", error);
+                        alert("创建服务失败");
+                    });
+            }
 
-        function addHeaderRow() {
-            const headersContainer = document.getElementById('headers-container');
-            const newRow = document.createElement('div');
-            newRow.className = 'header-row';
-            newRow.innerHTML = `
+            function addHeaderRow() {
+                const headersContainer =
+                    document.getElementById("headers-container");
+                const newRow = document.createElement("div");
+                newRow.className = "header-row";
+                newRow.innerHTML = `
                 <input type="text" class="header-key" placeholder="Key">
                 <input type="text" class="header-value" placeholder="Value">
                 <button class="btn" onclick="removeHeader(this)">删除</button>
             `;
-            headersContainer.appendChild(newRow);
-        }
+                headersContainer.appendChild(newRow);
+            }
 
-        function removeHeader(button) {
-            button.parentElement.remove();
-        }
+            function removeHeader(button) {
+                button.parentElement.remove();
+            }
+        </script>
 
-    </script>
-</body>
+        <script>
+            function listMockServer() {
+                debugger;
+                fetch("/listservers")
+                    .then((response) => response.json())
+                    .then((data) => {
+                        const servers = data.servers;
+                        const modal = document.getElementById(
+                            "mock-server-list-modal",
+                        );
+                        modal.style.display = "block";
+                        modal.style.position = "fixed";
+                        modal.style.top = "50%";
+                        modal.style.left = "50%";
+                        modal.style.transform = "translate(-50%, -50%)";
 
+                        const tbody = document.querySelector(
+                            "#server-list-table tbody",
+                        );
+                        tbody.innerHTML = "";
+                        servers.forEach((server) => {
+                            const row = document.createElement("tr");
+                            ["addr", "port", "status"].forEach((key) => {
+                                const td = document.createElement("td");
+                                td.textContent = server[key];
+                                td.style.border = "1px solid #ddd";
+                                td.style.padding = "8px";
+                                row.appendChild(td);
+                            });
+
+                            const actionTd = document.createElement("td");
+                            const stopButton = document.createElement("button");
+                            stopButton.textContent = "关闭";
+                            stopButton.style.padding = "5px 10px";
+                            stopButton.style.cursor = "pointer";
+                            stopButton.onclick = () => stopServer(server.port);
+                            actionTd.appendChild(stopButton);
+                            row.appendChild(actionTd);
+
+                            tbody.appendChild(row);
+                        });
+                    })
+                    .catch((error) => {
+                        console.error("Error fetching server list:", error);
+                    });
+            }
+
+            function stopServer(port) {
+                fetch("/stopserver", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ port: port }),
+                })
+                    .then((response) => {
+                        if (response.status === 200) {
+                            listMockServer();
+                        } else {
+                            alert("关闭服务失败");
+                        }
+                    })
+                    .catch((error) => {
+                        console.error("Error stopping server:", error);
+                        alert("关闭服务失败");
+                    });
+            }
+
+            function closeMockServerListModal() {
+                document.getElementById(
+                    "mock-server-list-modal",
+                ).style.display = "none";
+            }
+        </script>
+    </body>
 </html>
