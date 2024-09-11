@@ -16,7 +16,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest]
+        os: [macos-latest, windows-latest]
 
     steps:
       - name: Checkout code
@@ -41,6 +41,9 @@ jobs:
             unset GOARCH
             echo "===build arm64 release"
             go build -o dist/apixia-macos-arm64
+          elif [ "${{ matrix.os }}" == "windows-latest" ]; then
+            echo "===build windows amd64 release"
+            go build -ldflags -H=windowsgui -o dist/apixia-windows-amd64.exe
           fi
       - name: Upload artifact
         uses: actions/upload-artifact@v2
