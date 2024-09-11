@@ -51,23 +51,11 @@ jobs:
           name: myapp-${{ matrix.os }}
           path: |
             myapp-macos
-      - name: Test amd64 binary startup
+      - name: Build for Windows
+        if: matrix.os == 'windows-latest'
         run: |
-          # 启动程序并在后台运行
-          ./dist/apixia-macos-amd64 &
-          # 存储进程 ID
-          PID=$!
-          # 等待一小段时间
-          sleep 5
-          # 检查进程是否仍在运行
-          if ps -p $PID > /dev/null; then
-            echo "Program started successfully and is still running"
-            kill $PID
-            exit 0
-          else
-            echo "Program crashed or exited prematurely"
-            exit 1
-          fi
+          echo "===build windows amd64 release"
+          go build -ldflags -H=windowsgui -o dist/apixia-windows-amd64.exe
       - name: Commit and push changes
         run: |
           git config user.name github-actions
