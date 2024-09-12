@@ -269,3 +269,20 @@ button.remove-header-btn:hover {
 }
 
 /* ... existing styles ... */
+
+.message-resp-content {
+}
+
+.statusLine {
+    font-weight: bold;
+    font-size: 15pt;
+    font-color: black;
+}
+
+.connected {
+    font-color: green;
+}
+
+.disconnected {
+    font-color: red;
+}

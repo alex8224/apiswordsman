@@ -52,6 +52,7 @@ type WSMessage struct {
 	Action string      `json:"action"`
 	Port   int         `json:"port"`
 	Data   interface{} `json:"data,omitempty"`
+	Run    bool        `json:"run"`
 }
 
 // NewDynamicServer 创建并初始化一个新的 DynamicServer 实例
@@ -754,9 +755,6 @@ func (ds *DynamicServer) CreateServer(c *gin.Context) {
 		req.Data = "default mock data"
 	}
 
-	ds.serversMutex.Lock()
-	defer ds.serversMutex.Unlock()
-
 	if _, exists := ds.servers[req.Port]; exists {
 		c.JSON(http.StatusConflict, gin.H{"error": "Server already exists on this port"})
 		return
@@ -764,7 +762,24 @@ func (ds *DynamicServer) CreateServer(c *gin.Context) {
 
 	switch req.Type {
 	case "http":
-		go ds.startHTTPServer(&req)
+		createChan := make(chan interface{})
+		go ds.startHTTPServer(&req, createChan)
+		ready := <-createChan
+		switch v := ready.(type) {
+		case string:
+			c.JSON(http.StatusInternalServerError, gin.H{"message": fmt.Sprintf("failed to start %s server on port %d: %s", req.Type, req.Port, v)})
+			return
+		case bool:
+			if !v {
+				c.JSON(http.StatusInternalServerError, gin.H{"message": fmt.Sprintf("failed to start %s server on port %d", req.Type, req.Port)})
+				return
+			}
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "Unknown error occurred while starting the server"})
+			return
+		}
+		close(createChan)
+		break
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Unsupported server type"})
 		return
@@ -774,13 +789,14 @@ func (ds *DynamicServer) CreateServer(c *gin.Context) {
 }
 
 // startHTTPServer 启动一个新的 HTTP 服务器
-func (ds *DynamicServer) startHTTPServer(req *CreateServerReq) {
+func (ds *DynamicServer) startHTTPServer(req *CreateServerReq, readyChan chan interface{}) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
 		msg := WSMessage{
 			Action: "request",
 			Port:   req.Port,
+			Run:    true,
 			Data: map[string]interface{}{
 				"method":     r.Method,
 				"url":        r.URL.String(),
@@ -804,14 +820,28 @@ func (ds *DynamicServer) startHTTPServer(req *CreateServerReq) {
 		Addr:    ":" + strconv.Itoa(req.Port),
 		Handler: mux,
 	}
+	fmt.Println("try to listenadnserve on ", req.Port)
 
-	ds.serversMutex.Lock()
-	ds.servers[req.Port] = server
-	ds.serverConfigs[req.Port] = req
-	ds.serversMutex.Unlock()
+	serveReady := make(chan interface{})
+	go func() {
+		err := server.ListenAndServe()
+		if err != nil {
+			serveReady <- err.Error()
+		}
+		close(serveReady)
+	}()
 
-	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	select {
+	case err := <-serveReady:
+		readyChan <- err
 		fmt.Printf("Error starting server on port %d: %v\n", req.Port, err)
+	case <-time.After(100 * time.Millisecond):
+		readyChan <- true
+		ds.serversMutex.Lock()
+		ds.servers[req.Port] = server
+		ds.serverConfigs[req.Port] = req
+		ds.serversMutex.Unlock()
+		fmt.Printf("server listen on port %d n", req.Port)
 	}
 }
 
@@ -846,6 +876,11 @@ func (ds *DynamicServer) HandleWebSocket(c *gin.Context) {
 			ds.wsConnMutex.Lock()
 			ds.wsConnections[conn][msg.Port] = true
 			ds.wsConnMutex.Unlock()
+			conn.WriteJSON(WSMessage{
+				Action: "subok",
+				Port:   msg.Port,
+				Run:    true,
+			})
 		case "unsubscribe":
 			ds.wsConnMutex.Lock()
 			delete(ds.wsConnections[conn], msg.Port)
@@ -884,10 +919,12 @@ func (ds *DynamicServer) ListServers(c *gin.Context) {
 
 	var serverList []map[string]interface{}
 	for port, server := range ds.servers {
+		config := ds.serverConfigs[port]
 		serverList = append(serverList, map[string]interface{}{
 			"port":   port,
 			"status": "Running",
 			"addr":   server.Addr,
+			"type":   config.Type,
 		})
 	}
 
@@ -914,6 +951,11 @@ func (ds *DynamicServer) StopServer(c *gin.Context) {
 		return
 	}
 
+	ds.broadcastToWebSockets(WSMessage{
+		Action: "shutdown",
+		Port:   req.Port,
+		Run:    false,
+	})
 	if err := server.Shutdown(context.Background()); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to stop server on port %d: %v", req.Port, err)})
 		return

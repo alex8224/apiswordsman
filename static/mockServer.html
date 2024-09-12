@@ -5,13 +5,109 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Mock Server</title>
         <link rel="stylesheet" href="styles.css" />
+        <style>
+            .container {
+                max-width: 80%;
+                margin: 0 auto;
+                padding: 20px;
+                font-family: Arial, sans-serif;
+            }
+            .message-resp-section {
+                margin-bottom: 20px;
+                padding: 10px;
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                background-color: #f9f9f9;
+            }
+            .message-section {
+                margin-bottom: 20px;
+                padding: 10px;
+                border: 2px solid #4caf50; /* 强调响应区域 */
+                border-radius: 5px;
+                background-color: #e8f5e9; /* 强调响应区域 */
+            }
+            .message-header,
+            .message-body {
+                margin-bottom: 10px;
+            }
+            .btn {
+                padding: 10px 20px;
+                margin-right: 10px;
+                border: none;
+                border-radius: 5px;
+                background-color: #4caf50;
+                color: white;
+                cursor: pointer;
+            }
+            .btn:hover {
+                background-color: #45a049;
+            }
+            .modal {
+                display: none;
+                position: fixed;
+                z-index: 1;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                overflow: auto;
+                background-color: rgba(0, 0, 0, 0.4);
+            }
+            .modal-content {
+                background-color: #fefefe;
+                margin: 15% auto;
+                padding: 20px;
+                border: 1px solid #888;
+                width: 80%;
+                border-radius: 5px;
+            }
+            .close {
+                color: #aaa;
+                float: right;
+                font-size: 28px;
+                font-weight: bold;
+            }
+            .close:hover,
+            .close:focus {
+                color: black;
+                text-decoration: none;
+                cursor: pointer;
+            }
+            #response-data {
+                width: 100%;
+                height: 150px;
+                margin-bottom: 10px;
+                padding: 10px;
+                border: 1px solid #ccc;
+                border-radius: 5px;
+            }
+            .statusLine {
+                font-weight: bold;
+                padding: 5px;
+                border-radius: 5px;
+            }
+            .connected {
+                background-color: #4caf50;
+                color: white;
+            }
+            .disconnected {
+                background-color: #f44336;
+                color: white;
+            }
+        </style>
     </head>
     <body>
         <div class="container">
-            <h3 id="server-title"></h3>
+            <div id="server-title">
+                <span id="basic-info" class="statusLine"></span>
+            </div>
             <div class="message-section">
                 <h4>请求</h4>
                 <div class="message-content">
+                    <div class="message-header">
+                        <h5>地址</h5>
+                        <pre id="request-url"></pre>
+                    </div>
                     <div class="message-header">
                         <h5>Header</h5>
                         <pre id="request-header"></pre>
@@ -22,7 +118,7 @@
                     </div>
                 </div>
             </div>
-            <div class="message-section">
+            <div class="message-resp-section">
                 <h4>响应</h4>
                 <div class="message-resp-content">
                     <div class="message-header">
@@ -64,6 +160,19 @@
         <script>
             let ws;
 
+            function setBasicInfo(run) {
+                const urlParams = new URLSearchParams(window.location.search);
+                const port = urlParams.get("port");
+                const type = urlParams.get("type");
+                const runStatText = run ? "正在运行" : "已停止";
+                const basicInfo = document.getElementById("basic-info");
+                const textVal = `端口: ${port}, 类型: ${type} 运行状态 ${runStatText}`;
+                const cssName = run
+                    ? "statusLine connected"
+                    : "statusLine disconnected";
+                basicInfo.textContent = textVal;
+                basicInfo.className = cssName;
+            }
             function subscribeToServer(port) {
                 ws = new WebSocket("ws://localhost:8080/ws");
                 ws.onopen = function () {
@@ -76,8 +185,13 @@
                 };
                 ws.onmessage = function (event) {
                     const message = JSON.parse(event.data);
-                    if (message.action === "request") {
-                        debugger;
+                    console.log(message);
+                    const runTextEle = document.getElementById("basic-info");
+                    if (message.action === "subok") {
+                        console.log(`订阅 ${port} 数据成功`);
+                    } else if (message.action === "request") {
+                        document.getElementById("request-url").textContent =
+                            `${message.data.method} ${message.data.url}`;
                         document.getElementById("request-header").textContent =
                             JSON.stringify(message.data.headers, null, 2);
                         document.getElementById("request-body").textContent =
@@ -86,6 +200,9 @@
                             JSON.stringify(message.data.mockHeader, null, 2);
                         document.getElementById("response-body").textContent =
                             message.data.mockData;
+                        setBasicInfo(message.run);
+                    } else if (message.action === "shutdown") {
+                        setBasicInfo(message.run);
                     }
                 };
                 ws.onclose = function () {
@@ -100,8 +217,8 @@
                 const urlParams = new URLSearchParams(window.location.search);
                 const port = urlParams.get("port");
                 const type = urlParams.get("type");
-                document.getElementById("server-title").textContent =
-                    `端口: ${port}, 类型: ${type}`;
+                document.getElementById("basic-info").textContent =
+                    `端口: ${port}, 类型: ${type} 运行状态:等待中...`;
                 subscribeToServer(port);
             };
 
@@ -110,7 +227,7 @@
                 const urlParams = new URLSearchParams(window.location.search);
                 const port = urlParams.get("port");
 
-                fetch("http://localhost:8080/stopserver", {
+                fetch("/stopserver", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -138,7 +255,7 @@
                 const urlParams = new URLSearchParams(window.location.search);
                 const port = urlParams.get("port");
 
-                fetch(`http://localhost:8080/getserver?port=${port}`)
+                fetch(`/getserver?port=${port}`)
                     .then((response) => response.json())
                     .then((data) => {
                         document.getElementById("response-data").value =
@@ -165,7 +282,7 @@
                 const port = urlParams.get("port");
                 const newData = document.getElementById("response-data").value;
 
-                fetch("http://localhost:8080/updateserver", {
+                fetch("/updateserver", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -175,12 +292,11 @@
                         mockData: newData,
                     }),
                 })
-                    .then((response) => {
+                    .then(async (response) => {
                         if (response.status === 200) {
-                            alert("响应数据已更新");
                             closeEditResponseModal();
                         } else {
-                            alert("更新响应数据失败");
+                            alert(`更新响应数据失败 ${response.text()}`);
                         }
                     })
                     .catch((error) => {

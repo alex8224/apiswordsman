@@ -182,92 +182,111 @@
                 </div>
                 <div class="form-group">
                     <label for="new-server-headers">返回的Header数据：</label>
-                    <div id="headers-container">
+                    <div id="mock-headers-container">
                         <div class="header-row">
-                            <input
-                                type="text"
-                                class="header-key"
-                                placeholder="Key"
-                            />
-                            <input
-                                type="text"
-                                class="header-value"
-                                placeholder="Value"
-                            />
-                            <button class="btn" onclick="removeHeader(this)">
-                                删除
+                            <span
+                                id="mockHeaderRow"
+                                class="header-row"
+                                style="width: 90%"
+                            >
+                                <input
+                                    type="text"
+                                    class="header-key"
+                                    placeholder="Key"
+                                />
+                                <input
+                                    type="text"
+                                    class="header-value"
+                                    placeholder="Value"
+                                />
+                            </span>
+                            <button
+                                class="btn remove-header-btn"
+                                onclick="removeHeader(this)"
+                            >
+                                X
+                            </button>
+                            <button class="btn" onclick="addHeaderRow()">
+                                +
                             </button>
                         </div>
                     </div>
-                    <button class="btn" onclick="addHeaderRow()">
-                        新增Header
-                    </button>
                 </div>
                 <button class="btn" onclick="createNewServer()">
                     创建服务
                 </button>
                 <button class="btn" onclick="closeNewServerForm()">取消</button>
             </div>
+        </div>
+        <!-- 模拟服务列表弹框 -->
+        <div id="mock-server-list-modal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeMockServerListModal()"
+                    >&times;</span
+                >
+                <h3>已启动的服务列表</h3>
+                <table
+                    id="server-list-table"
+                    style="width: 100%; border-collapse: collapse"
+                >
+                    <thead>
+                        <tr>
+                            <th
+                                style="
+                                    border: 1px solid #ddd;
+                                    padding: 8px;
+                                    text-align: left;
+                                "
+                            >
+                                地址
+                            </th>
+                            <th
+                                style="
+                                    border: 1px solid #ddd;
+                                    padding: 8px;
+                                    text-align: left;
+                                "
+                            >
+                                端口
+                            </th>
 
-            <!-- 模拟服务列表弹框 -->
-            <div id="mock-server-list-modal" class="modal">
-                <div class="modal-content">
-                    <span class="close" onclick="closeMockServerListModal()"
-                        >&times;</span
-                    >
-                    <h3>已启动的服务列表</h3>
-                    <table
-                        id="server-list-table"
-                        style="width: 100%; border-collapse: collapse"
-                    >
-                        <thead>
-                            <tr>
-                                <th
-                                    style="
-                                        border: 1px solid #ddd;
-                                        padding: 8px;
-                                        text-align: left;
-                                    "
-                                >
-                                    地址
-                                </th>
-                                <th
-                                    style="
-                                        border: 1px solid #ddd;
-                                        padding: 8px;
-                                        text-align: left;
-                                    "
-                                >
-                                    端口
-                                </th>
-                                <th
-                                    style="
-                                        border: 1px solid #ddd;
-                                        padding: 8px;
-                                        text-align: left;
-                                    "
-                                >
-                                    状态
-                                </th>
-                                <th
-                                    style="
-                                        border: 1px solid #ddd;
-                                        padding: 8px;
-                                        text-align: left;
-                                    "
-                                >
-                                    操作
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- 服务列表将动态填充到这里 -->
-                        </tbody>
-                    </table>
-                    <button class="btn" onclick="closeMockServerListModal()">
-                        关闭
-                    </button>
-                </div>
+                            <th
+                                style="
+                                    border: 1px solid #ddd;
+                                    padding: 8px;
+                                    text-align: left;
+                                "
+                            >
+                                协议类型
+                            </th>
+
+                            <th
+                                style="
+                                    border: 1px solid #ddd;
+                                    padding: 8px;
+                                    text-align: left;
+                                "
+                            >
+                                状态
+                            </th>
+                            <th
+                                style="
+                                    border: 1px solid #ddd;
+                                    padding: 8px;
+                                    text-align: left;
+                                "
+                            >
+                                操作
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- 服务列表将动态填充到这里 -->
+                    </tbody>
+                </table>
+                <button class="btn" onclick="closeMockServerListModal()">
+                    关闭
+                </button>
             </div>
         </div>
 
@@ -888,8 +907,9 @@
                 const mockData = document.getElementById(
                     "new-server-mock-data",
                 ).value;
-                const headersContainer =
-                    document.getElementById("headers-container");
+                const headersContainer = document.getElementById(
+                    "mock-headers-container",
+                );
                 const headers = {};
                 headersContainer
                     .querySelectorAll(".header-row")
@@ -897,7 +917,7 @@
                         const key = row.querySelector(".header-key").value;
                         const value = row.querySelector(".header-value").value;
                         if (key && value) {
-                            headers.push({ key, value });
+                            headers[key] = value;
                         }
                     });
 
@@ -913,30 +933,34 @@
                         headers: headers,
                     }),
                 })
-                    .then((data) => {
+                    .then(async (data) => {
                         if (data.status === 200) {
                             let srvUrl = `mockServer.html?port=${port}&type=${type}`;
                             window.open(srvUrl, `_${port}`);
                             closeNewServerForm();
                         } else {
-                            alert("创建服务失败");
+                            debugger;
+                            const errDescr = await data.json();
+                            alert("创建服务失败,原因:" + errDescr.message);
                         }
                     })
                     .catch((error) => {
                         console.error("Error:", error);
-                        alert("创建服务失败");
+                        alert("创建服务失败 " + error.message);
                     });
             }
 
             function addHeaderRow() {
-                const headersContainer =
-                    document.getElementById("headers-container");
+                const headersContainer = document.getElementById(
+                    "mock-headers-container",
+                );
                 const newRow = document.createElement("div");
                 newRow.className = "header-row";
                 newRow.innerHTML = `
                 <input type="text" class="header-key" placeholder="Key">
                 <input type="text" class="header-value" placeholder="Value">
-                <button class="btn" onclick="removeHeader(this)">删除</button>
+                <button class="btn remove-header-btn" onclick="removeHeader(this)">X</button>
+                <button class="btn" onclick="addHeaderRow()">+</button>
             `;
                 headersContainer.appendChild(newRow);
             }
@@ -968,13 +992,15 @@
                         tbody.innerHTML = "";
                         servers.forEach((server) => {
                             const row = document.createElement("tr");
-                            ["addr", "port", "status"].forEach((key) => {
-                                const td = document.createElement("td");
-                                td.textContent = server[key];
-                                td.style.border = "1px solid #ddd";
-                                td.style.padding = "8px";
-                                row.appendChild(td);
-                            });
+                            ["addr", "port", "type", "status"].forEach(
+                                (key) => {
+                                    const td = document.createElement("td");
+                                    td.textContent = server[key];
+                                    td.style.border = "1px solid #ddd";
+                                    td.style.padding = "8px";
+                                    row.appendChild(td);
+                                },
+                            );
 
                             const actionTd = document.createElement("td");
                             const stopButton = document.createElement("button");
