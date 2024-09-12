@@ -12,12 +12,8 @@ env:
   GOOS: darwin
   CGO_ENABLED: 1
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [macos-latest, windows-latest]
-
+  build-macos:
+    runs-on: macos-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -33,18 +29,15 @@ jobs:
           elif [ "${{ matrix.os }}" == "windows-latest" ]; then
             ver
           fi
-      - name: Build for ${{ matrix.os }}
+      - name: Build for macos-latest
         run: |
           if [ "${{ matrix.os }}" == "macos-latest" ]; then
             echo "===build amd64 release"
+            export GOARCH=amd64
             go build -o dist/apixia-macos-amd64
             unset GOARCH
             echo "===build arm64 release"
             go build -o dist/apixia-macos-arm64
-          elif [ "${{ matrix.os }}" == "windows-latest" ]; then
-            echo "===build windows amd64 release"
-            go build -ldflags -H=windowsgui -o dist/apixia-windows-amd64.exe
-          fi
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
