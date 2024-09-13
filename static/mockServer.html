@@ -6,41 +6,103 @@
         <title>Mock Server</title>
         <link rel="stylesheet" href="styles.css" />
         <style>
+            body {
+                font-family: Arial, sans-serif;
+                background-color: #f4f4f4;
+                margin: 0;
+                padding: 0;
+            }
             .container {
                 max-width: 80%;
                 margin: 0 auto;
                 padding: 20px;
-                font-family: Arial, sans-serif;
             }
-            .message-resp-section {
-                margin-bottom: 20px;
-                padding: 10px;
-                border: 1px solid #ccc;
+            .toolbar {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                color: white;
+                padding: 10px 20px;
+                border-radius: 5px 5px 0 0;
+                background-color: green;
+            }
+            .toolbar .statusLine {
+                font-weight: bold;
+            }
+
+            .connected {
+                background-color: green;
+            }
+
+            .disconnected {
+                background-color: red;
+            }
+
+            .toolbar .basic-info {
+                font-weight: bold;
+                font-size: 15pt;
+            }
+
+            .toolbar .btn {
+                padding: 10px 20px;
+                margin-left: 10px;
+                border: none;
                 border-radius: 5px;
-                background-color: #f9f9f9;
+                background-color: #333;
+                color: white;
+                cursor: pointer;
+            }
+            .toolbar .btn:hover {
+                background-color: #555;
+            }
+            .tabs {
+                display: flex;
+                border-radius: 0 0 5px 5px;
+            }
+            .tabs .tab {
+                padding: 10px 20px;
+                cursor: pointer;
+                color: white;
+                border-radius: 5px 5px 0 0;
+                background-color: #f4f4f4;
+                color: black;
+            }
+            .tabs .tab.active {
+                background-color: #808080;
+                color: white;
+            }
+            .tab-content {
+                display: none;
+                padding: 20px;
+                background-color: #f4f4f4;
+                border-radius: 0 0 5px 5px;
+            }
+            .tab-content.active {
+                display: block;
             }
             .message-section {
                 margin-bottom: 20px;
                 padding: 10px;
-                border: 2px solid #4caf50; /* 强调响应区域 */
+                border: 2px solid #4caf50;
                 border-radius: 5px;
-                background-color: #e8f5e9; /* 强调响应区域 */
+                background-color: #e8f5e9;
             }
             .message-header,
             .message-body {
                 margin-bottom: 10px;
             }
-            .btn {
-                padding: 10px 20px;
-                margin-right: 10px;
-                border: none;
+            .message-body pre {
+                overflow: auto;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                padding: 10px;
+                border: 1px solid #ccc;
                 border-radius: 5px;
-                background-color: #4caf50;
-                color: white;
-                cursor: pointer;
-            }
-            .btn:hover {
-                background-color: #45a049;
+                background-color: #f9f9f9;
+                font-family: monospace;
+                font-size: 14px;
+                line-height: 1.5;
+                max-height: 200px;
             }
             .modal {
                 display: none;
@@ -81,67 +143,68 @@
                 border: 1px solid #ccc;
                 border-radius: 5px;
             }
-            .statusLine {
-                font-weight: bold;
-                padding: 5px;
-                border-radius: 5px;
-            }
-            .connected {
-                background-color: #4caf50;
-                color: white;
-            }
-            .disconnected {
-                background-color: #f44336;
-                color: white;
-            }
         </style>
     </head>
     <body>
         <div class="container">
-            <div id="server-title">
-                <span id="basic-info" class="statusLine"></span>
+            <div class="toolbar">
+                <span class="basic-info"></span>
+                <div>
+                    <button
+                        class="btn"
+                        id="stop-server-btn"
+                        onclick="stopServer()"
+                    >
+                        关闭服务
+                    </button>
+                    <button
+                        class="btn"
+                        id="edit-response-btn"
+                        onclick="showEditResponseModal()"
+                    >
+                        修改响应请求
+                    </button>
+                </div>
             </div>
-            <div class="message-section">
-                <h4>请求</h4>
-                <div class="message-content">
-                    <div class="message-header">
-                        <h5>地址</h5>
-                        <pre id="request-url"></pre>
-                    </div>
-                    <div class="message-header">
-                        <h5>Header</h5>
-                        <pre id="request-header"></pre>
-                    </div>
-                    <div class="message-body">
-                        <h5>Body</h5>
-                        <pre id="request-body"></pre>
+            <div class="tabs">
+                <div class="tab active" onclick="showTab('request')">请求</div>
+                <div class="tab" onclick="showTab('response')">响应</div>
+            </div>
+            <div id="request-tab" class="tab-content active">
+                <div class="message-section">
+                    <div class="message-content">
+                        <div class="message-header">
+                            <h5>地址</h5>
+                            <pre id="request-url"></pre>
+                        </div>
+                        <div class="message-header">
+                            <h5>Header</h5>
+                            <pre id="request-header"></pre>
+                        </div>
+                        <div class="message-body">
+                            <h5>Body</h5>
+                            <pre
+                                id="request-body"
+                                ondblclick="copyToClipboard(this)"
+                            ></pre>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="message-resp-section">
-                <h4>响应</h4>
-                <div class="message-resp-content">
-                    <div class="message-header">
-                        <h5>Header</h5>
-                        <pre id="response-header"></pre>
-                    </div>
-                    <div class="message-body">
-                        <h5>Body</h5>
-                        <pre id="response-body"></pre>
+            <div id="response-tab" class="tab-content">
+                <div class="message-section">
+                    <div class="message-content">
+                        <div class="message-header">
+                            <h5>Header</h5>
+                            <pre id="response-header"></pre>
+                        </div>
+                        <div class="message-body">
+                            <h5>Body</h5>
+                            <pre id="response-body"></pre>
+                        </div>
                     </div>
                 </div>
             </div>
-            <!-- 添加关闭服务的按钮 -->
-            <button class="btn" id="stop-server-btn" onclick="stopServer()">
-                关闭服务
-            </button>
-            <button
-                class="btn"
-                id="edit-response-btn"
-                onclick="showEditResponseModal()"
-            >
-                修改响应请求
-            </button>
         </div>
 
         <!-- 弹出框 -->
@@ -165,13 +228,13 @@
                 const port = urlParams.get("port");
                 const type = urlParams.get("type");
                 const runStatText = run ? "正在运行" : "已停止";
-                const basicInfo = document.getElementById("basic-info");
+                const basicInfo = document.querySelector(".basic-info");
                 const textVal = `端口: ${port}, 类型: ${type} 运行状态 ${runStatText}`;
-                const cssName = run
-                    ? "statusLine connected"
-                    : "statusLine disconnected";
                 basicInfo.textContent = textVal;
-                basicInfo.className = cssName;
+                const toolbarCssName = run
+                    ? "toolbar connected"
+                    : "toolbar disconnected";
+                document.querySelector(".toolbar").className = toolbarCssName;
             }
             function subscribeToServer(port) {
                 ws = new WebSocket("ws://localhost:8080/ws");
@@ -186,7 +249,6 @@
                 ws.onmessage = function (event) {
                     const message = JSON.parse(event.data);
                     console.log(message);
-                    const runTextEle = document.getElementById("basic-info");
                     if (message.action === "subok") {
                         console.log(`订阅 ${port} 数据成功`);
                     } else if (message.action === "request") {
@@ -217,7 +279,7 @@
                 const urlParams = new URLSearchParams(window.location.search);
                 const port = urlParams.get("port");
                 const type = urlParams.get("type");
-                document.getElementById("basic-info").textContent =
+                document.querySelector(".basic-info").textContent =
                     `端口: ${port}, 类型: ${type} 运行状态:等待中...`;
                 subscribeToServer(port);
             };
@@ -303,6 +365,35 @@
                         console.error("Error updating server data:", error);
                         alert("更新响应数据失败");
                     });
+            }
+
+            // 双击复制内容到剪贴板
+            function copyToClipboard(element) {
+                const range = document.createRange();
+                range.selectNode(element);
+                window.getSelection().removeAllRanges();
+                window.getSelection().addRange(range);
+                document.execCommand("copy");
+                window.getSelection().removeAllRanges();
+                alert("内容已复制到剪贴板");
+            }
+
+            // 切换标签页
+            function showTab(tabName) {
+                const tabs = document.querySelectorAll(".tab");
+                const tabContents = document.querySelectorAll(".tab-content");
+
+                tabs.forEach((tab) => tab.classList.remove("active"));
+                tabContents.forEach((content) =>
+                    content.classList.remove("active"),
+                );
+
+                document
+                    .querySelector(`.tab[onclick="showTab('${tabName}')"]`)
+                    .classList.add("active");
+                document
+                    .getElementById(`${tabName}-tab`)
+                    .classList.add("active");
             }
         </script>
     </body>

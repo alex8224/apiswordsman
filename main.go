@@ -756,7 +756,7 @@ func (ds *DynamicServer) CreateServer(c *gin.Context) {
 	}
 
 	if _, exists := ds.servers[req.Port]; exists {
-		c.JSON(http.StatusConflict, gin.H{"error": "Server already exists on this port"})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": fmt.Sprintf("Server already exists on this port %d", req.Port)})
 		return
 	}
 
