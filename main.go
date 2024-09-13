@@ -37,9 +37,32 @@ type CreateServerReq struct {
 	Headers     map[string]string `json:"headers"`
 }
 
+type ServerWrapper struct {
+	Addr     string
+	instance interface{}
+}
+
+func NewServerWrapper(addr string, instance interface{}) *ServerWrapper {
+	return &ServerWrapper{Addr: addr, instance: instance}
+}
+
+func (server *ServerWrapper) ShutDown() {
+	if httpServer, ok := server.instance.(*http.Server); ok {
+		if err := httpServer.Shutdown(context.Background()); err != nil {
+			fmt.Printf("Failed to stop HTTP server on port %v: %v\n", httpServer.Addr, err)
+		}
+	} else if socketServer, ok := server.instance.(net.Listener); ok {
+		if err := socketServer.Close(); err != nil {
+			fmt.Printf("Failed to stop socket server on port %d: %v\n", server.instance, err)
+		}
+	} else {
+		fmt.Printf("Unknown server type for instance: %v\n", server.instance)
+	}
+}
+
 // DynamicServer 结构体用于管理动态创建的服务器
 type DynamicServer struct {
-	servers       map[int]*http.Server
+	servers       map[int]*ServerWrapper
 	serverConfigs map[int]*CreateServerReq
 	serversMutex  sync.Mutex
 	wsConnections map[*websocket.Conn]map[int]bool
@@ -58,7 +81,7 @@ type WSMessage struct {
 // NewDynamicServer 创建并初始化一个新的 DynamicServer 实例
 func NewDynamicServer() *DynamicServer {
 	return &DynamicServer{
-		servers:       make(map[int]*http.Server),
+		servers:       make(map[int]*ServerWrapper),
 		serverConfigs: make(map[int]*CreateServerReq),
 		wsConnections: make(map[*websocket.Conn]map[int]bool),
 		upgrader: websocket.Upgrader{
@@ -742,6 +765,21 @@ func wsdlMethods(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": 200, "errMsg": "", "resp": methods})
 }
 
+func handleServerCreationResult(req *CreateServerReq, createChan chan interface{}) error {
+	ready := <-createChan
+	switch v := ready.(type) {
+	case string:
+		return fmt.Errorf("failed to start %s server on port %d: %s", req.Type, req.Port, v)
+	case bool:
+		if !v {
+			return fmt.Errorf("failed to start %s server on port %d", req.Type, req.Port)
+		}
+	default:
+		return fmt.Errorf("unknown error occurred while starting the server")
+	}
+	return nil
+}
+
 // CreateServer 处理创建新服务器的请求
 func (ds *DynamicServer) CreateServer(c *gin.Context) {
 
@@ -760,32 +798,101 @@ func (ds *DynamicServer) CreateServer(c *gin.Context) {
 		return
 	}
 
+	createChan := make(chan interface{})
+	defer close(createChan)
 	switch req.Type {
 	case "http":
-		createChan := make(chan interface{})
 		go ds.startHTTPServer(&req, createChan)
-		ready := <-createChan
-		switch v := ready.(type) {
-		case string:
-			c.JSON(http.StatusInternalServerError, gin.H{"message": fmt.Sprintf("failed to start %s server on port %d: %s", req.Type, req.Port, v)})
-			return
-		case bool:
-			if !v {
-				c.JSON(http.StatusInternalServerError, gin.H{"message": fmt.Sprintf("failed to start %s server on port %d", req.Type, req.Port)})
-				return
-			}
-		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"message": "Unknown error occurred while starting the server"})
-			return
-		}
-		close(createChan)
-		break
+	case "hl7":
+		go ds.startMllpServer(&req, createChan)
 	default:
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Unsupported server type"})
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Unsupported server type"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("%s server started on port %d", req.Type, req.Port)})
+	if err := handleServerCreationResult(&req, createChan); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+	} else {
+		c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("%s server started on port %d", req.Type, req.Port)})
+	}
+}
+
+// startMllpServer 启动一个新的 MLLP 服务器
+func (ds *DynamicServer) startMllpServer(req *CreateServerReq, readyChan chan interface{}) {
+	listener, err := net.Listen("tcp", ":"+strconv.Itoa(req.Port))
+	if err != nil {
+		readyChan <- err.Error()
+		return
+	}
+
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				fmt.Printf("Error accepting connection: %v\n", err)
+				break
+			}
+			go ds.handleMllpConnection(conn, req)
+		}
+	}()
+
+	ds.serversMutex.Lock()
+	ds.servers[req.Port] = NewServerWrapper(listener.Addr().String(), listener)
+	ds.serverConfigs[req.Port] = req
+	ds.serversMutex.Unlock()
+
+	readyChan <- true
+	fmt.Printf("MLLP server listening on port %d\n", req.Port)
+}
+
+func (ds *DynamicServer) handleMllpConnection(conn net.Conn, req *CreateServerReq) {
+	defer conn.Close()
+
+	buffer := make([]byte, 1024)
+	startBlock := []byte{0x0b}
+	endBlock := []byte{0x1c, 0x0d}
+
+	for {
+		n, err := conn.Read(buffer)
+		if err != nil {
+			if err != io.EOF {
+				fmt.Printf("Error reading from connection: %v\n", err)
+			}
+			return
+		}
+
+		// 检查是否是有效的 MLLP 消息
+		if n < 3 || buffer[0] != startBlock[0] || buffer[n-2] != endBlock[0] || buffer[n-1] != endBlock[1] {
+			fmt.Println("Invalid MLLP message")
+			continue
+		}
+
+		// 提取消息内容
+		message := buffer[1 : n-2]
+
+		msg := WSMessage{
+			Action: "request",
+			Port:   req.Port,
+			Run:    true,
+			Data: map[string]interface{}{
+				"method":     "HL7",
+				"body":       string(message),
+				"mockData":   req.Data,
+				"mockHeader": req.Headers,
+			},
+		}
+
+		ds.broadcastToWebSockets(msg)
+
+		// 发送响应
+		response := append(startBlock, []byte(req.Data)...)
+		response = append(response, endBlock...)
+		_, err = conn.Write(response)
+		if err != nil {
+			fmt.Printf("Error sending response: %v\n", err)
+			return
+		}
+	}
 }
 
 // startHTTPServer 启动一个新的 HTTP 服务器
@@ -838,7 +945,7 @@ func (ds *DynamicServer) startHTTPServer(req *CreateServerReq, readyChan chan in
 	case <-time.After(100 * time.Millisecond):
 		readyChan <- true
 		ds.serversMutex.Lock()
-		ds.servers[req.Port] = server
+		ds.servers[req.Port] = NewServerWrapper(server.Addr, server)
 		ds.serverConfigs[req.Port] = req
 		ds.serversMutex.Unlock()
 		fmt.Printf("server listen on port %d n", req.Port)
@@ -956,10 +1063,7 @@ func (ds *DynamicServer) StopServer(c *gin.Context) {
 		Port:   req.Port,
 		Run:    false,
 	})
-	if err := server.Shutdown(context.Background()); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to stop server on port %d: %v", req.Port, err)})
-		return
-	}
+	server.ShutDown()
 
 	delete(ds.servers, req.Port)
 
