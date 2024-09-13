@@ -236,8 +236,9 @@
                     : "toolbar disconnected";
                 document.querySelector(".toolbar").className = toolbarCssName;
             }
-            function subscribeToServer(port) {
-                ws = new WebSocket("ws://localhost:8080/ws");
+            function subscribeToServer(host, srvport, port) {
+                debugger;
+                ws = new WebSocket(`ws://${host}:${srvport}/ws`);
                 ws.onopen = function () {
                     ws.send(
                         JSON.stringify({
@@ -281,7 +282,12 @@
                 const type = urlParams.get("type");
                 document.querySelector(".basic-info").textContent =
                     `端口: ${port}, 类型: ${type} 运行状态:等待中...`;
-                subscribeToServer(port);
+                debugger;
+                subscribeToServer(
+                    window.location.hostname,
+                    window.location.port,
+                    port,
+                );
             };
 
             // 添加关闭服务的函数

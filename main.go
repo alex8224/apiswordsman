@@ -1,18 +1,19 @@
 package main
 
 import (
-	"context"
-	"strconv"
-
 	"bytes"
+	"context"
 	"encoding/json"
 	"encoding/xml"
+	"flag"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"os"
 	"os/exec"
+	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -24,6 +25,8 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/hooklift/gowsdl"
 )
+
+var default_port int = 18888
 
 func main() {
 	systray.Run(onReady, onExit)
@@ -108,8 +111,23 @@ func startServer() {
 	r.POST("/stopserver", dynamicServer.StopServer)
 	r.GET("/getserver", dynamicServer.GetServerConfig)
 	r.POST("/updateserver", dynamicServer.UpdateServer)
+	port := flag.Int("port", default_port, "Port to run the server on")
+	flag.Parse()
+	default_port = *port
 
-	r.Run(":8080")
+	for i := 0; i < 10; i++ {
+		port := fmt.Sprintf(":%d", default_port)
+		fmt.Printf("Trying to start server on port %s\n", port)
+		err := r.Run(port)
+		if err == nil {
+			systray.SetTooltip(fmt.Sprintf("%s-:%s", trayToopTip, port))
+			fmt.Printf("Server started successfully on port %d\n", default_port)
+			break
+		} else {
+			fmt.Printf("Failed to start server on port %s: %v\n", port, err)
+		}
+		default_port++
+	}
 }
 
 var GrayDat []byte = []byte{
@@ -475,14 +493,16 @@ var (
 	isFlashing bool = true
 )
 
+const trayToopTip string = "APIXIA客户端"
+
 func OnTrayDbClick() {
 	openDebugWin()
 }
 
 func onReady() {
 	systray.SetIcon(icon.Data)
-	systray.SetTitle("PostMan-消息模拟")
-	systray.SetTooltip("消息模拟")
+	systray.SetTitle("APIXIA")
+	systray.SetTooltip(trayToopTip)
 	// systray.RegisterDbClick(OnTrayDbClick)
 
 	mDebug := systray.AddMenuItem("打开调试页", "打开调试页")
@@ -535,13 +555,26 @@ func handleFlash() {
 }
 
 func openDebugWin() {
-	url := "http://localhost:8080/static/index.html"
-	var err error
-	err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
-	if err != nil {
-		fmt.Printf("Error opening browser: %v\n", err)
+	url := fmt.Sprintf("http://localhost:%d/static/index.html", default_port)
+	switch runtime.GOOS {
+	case "windows":
+		err := exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+		if err != nil {
+			fmt.Printf("Error opening browser on Windows: %v\n", err)
+		}
+	case "darwin":
+		err := exec.Command("open", url).Start()
+		if err != nil {
+			fmt.Printf("Error opening browser on macOS: %v\n", err)
+		}
+	case "linux":
+		err := exec.Command("xdg-open", url).Start()
+		if err != nil {
+			fmt.Printf("Error opening browser on Linux: %v\n", err)
+		}
+	default:
+		fmt.Println("Unsupported platform", runtime.GOOS)
 	}
-
 }
 
 func onExit() {
