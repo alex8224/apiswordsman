@@ -18,6 +18,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/apache/rocketmq-client-go/v2"
+	"github.com/apache/rocketmq-client-go/v2/primitive"
+	"github.com/apache/rocketmq-client-go/v2/producer"
 	"github.com/getlantern/systray"
 	"github.com/getlantern/systray/example/icon"
 	"github.com/gin-gonic/gin"
@@ -96,6 +99,7 @@ func NewDynamicServer() *DynamicServer {
 }
 
 func startServer() {
+	fmt.Printf("Server process ID: %d\n", os.Getpid())
 	r := gin.Default()
 	r.Static("/static", "./static")
 	r.POST("/mockhttp", mockHttpRoute)
@@ -103,6 +107,7 @@ func startServer() {
 	r.POST("/mllp", mllpRoute)
 	r.POST("/soap", soapRoute)
 	r.POST("/wsdl-methods", wsdlMethods)
+	r.POST("/rocketmq", rocketmqRoute)
 
 	dynamicServer := NewDynamicServer()
 	r.POST("/createserver", dynamicServer.CreateServer)
@@ -748,6 +753,125 @@ func sendMllpMessage(host, port, message string) ([]byte, error) {
 
 	data = data[1 : n-2]
 	return []byte(strings.ReplaceAll(string(data), "\r", "\r\n")), nil
+}
+
+// 封装一个方法，从interface转换为指定类型的值，如将interface{} 转换为 string 类型
+func toString(value interface{}) string {
+	switch v := value.(type) {
+	case string:
+		return v
+	default:
+		return ""
+	}
+}
+
+func ConvertTo[T any](value interface{}) T {
+	val, ok := value.(T)
+	if !ok {
+		fmt.Println("转换失败")
+		return val
+	}
+	return val
+}
+
+type MqMsg struct {
+	Topic    string                 `json:"topic"`
+	Url      string                 `json:"url"`
+	Body     map[string]interface{} `json:"body"`
+	RetryNum int                    `json:"retry_num"`
+}
+
+// 接收http请求，发送指定消息到rocketmq
+func rocketmqRoute(c *gin.Context) {
+	var data MqMsg
+	if err := c.BindJSON(&data); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": 400, "errMsg": err.Error(), "resp": ""})
+		return
+	}
+
+	parts := strings.Split(data.Url, ":")
+	if len(parts) != 2 {
+		c.JSON(http.StatusBadRequest, gin.H{"status": 400, "errMsg": "Invalid URL format", "resp": ""})
+		return
+	}
+
+	host, port := parts[0], parts[1]
+	fmt.Println("host ", host, " port ", port)
+
+	// 如果有body参数，则解析body参数
+	if data.Body == nil {
+		fmt.Printf("error unmarshalling message body: \n")
+		c.JSON(http.StatusBadRequest, gin.H{"status": 400, "errMsg": "Invalid body", "resp": ""})
+		return
+	}
+
+	body, err := json.Marshal(data.Body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": 400, "errMsg": "Invalid body", "resp": ""})
+		return
+	}
+
+	header := ConvertTo[map[string]interface{}](data.Body["header"])
+	operType := header["operType"].(string)
+	key := topip_keymap[operType]
+	fmt.Printf("mashal body is %s\n", string(body))
+	response, err := sendRocketmqMessage(host, port, data.Topic, string(body), key, data.RetryNum)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": 500, "errMsg": err.Error(), "resp": ""})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": 200, "errMsg": "", "resp": response})
+}
+
+var topip_keymap map[string]string = map[string]string{
+	"0": "ADD",
+	"1": "UPDATE",
+	"2": "DELETE",
+}
+
+// 调用rocketmq 客户端发送消息
+func sendRocketmqMessage(host, port, topic, message, key string, retry int) (*primitive.SendResult, error) {
+	fmt.Printf("try to send rocketmq message, host: %s, port: %s, topic: %s, message: %s, retry: %d\n", host, port, topic, message, retry)
+	endpoint := fmt.Sprintf("%s:%s", host, port)
+	p, err := rocketmq.NewProducer(
+		producer.WithNameServer([]string{endpoint}),
+		producer.WithRetry(retry),
+	)
+
+	if err != nil {
+		fmt.Printf("create producer error %v\n", err)
+		return nil, err
+	}
+
+	err = p.Start()
+	if err != nil {
+		fmt.Println("start producer error", err)
+		return nil, err
+	}
+
+	msg := &primitive.Message{
+		Topic: topic,
+		Body:  []byte(message),
+	}
+
+	//使用 msg的withKeys方法设置kemsg.WithKeys([]string{"your_message_key"})y
+	msg = msg.WithKeys([]string{key})
+
+	ret, err := p.SendSync(context.Background(), msg)
+	if err != nil {
+		fmt.Println("send message error", err)
+		return nil, err
+	}
+
+	fmt.Printf("send to topic %s, result: %s\n", topic, ret.String())
+	err = p.Shutdown()
+
+	if err != nil {
+		fmt.Println("shutdown producer error", err)
+		return nil, err
+	}
+	return ret, nil
 }
 
 // 补充中文注释

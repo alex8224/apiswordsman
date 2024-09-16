@@ -42,6 +42,7 @@
                         <option value="http">HTTP</option>
                         <option value="mllp">MLLP</option>
                         <option value="soap">SOAP</option>
+                        <option value="rocketmq">RocketMQ</option>
                     </select>
                 </div>
                 <div class="form-group" id="http-method-group">
@@ -562,6 +563,7 @@
             }
 
             async function sendRequest() {
+                debugger;
                 saveCurrentTabData();
                 var endpoint = document.getElementById("endpoint").value;
                 var protocol = document.getElementById("protocol").value;
@@ -614,6 +616,15 @@
                         url: endpoint,
                         method: soapMethod,
                         req: requestBody,
+                    });
+                } else if (protocol === "rocketmq") {
+                    var body = JSON.parse(requestBody);
+                    url = "/rocketmq";
+                    data = JSON.stringify({
+                        url: endpoint,
+                        topic: body["topic"],
+                        body: body["body"],
+                        retry_num: parseInt(body["retry_num"]),
                     });
                 }
 
