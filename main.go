@@ -29,7 +29,7 @@ import (
 	"github.com/hooklift/gowsdl"
 )
 
-var default_port int = 18888
+var default_port int = 8080
 
 func main() {
 	systray.Run(onReady, onExit)
