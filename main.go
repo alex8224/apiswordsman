@@ -1070,6 +1070,17 @@ func (ds *DynamicServer) startHTTPServer(req *CreateServerReq, readyChan chan in
 				"mockHeader": req.Headers,
 			},
 		}
+		//根据header中的X-Delay字段模拟指定的延迟
+
+		if delay, ok := req.Headers["X-Delay"]; ok {
+			//将delay字段转换为整数
+			delayInt, err := strconv.Atoi(delay)
+			if err != nil {
+				fmt.Println("转换失败")
+			} else {
+				time.Sleep(time.Duration(delayInt) * time.Millisecond)
+			}
+		}
 
 		ds.broadcastToWebSockets(msg)
 		for key, value := range req.Headers {
@@ -1155,14 +1166,13 @@ func (ds *DynamicServer) HandleWebSocket(c *gin.Context) {
 
 // broadcastToWebSockets 向订阅的 WebSocket 连接广播消息
 func (ds *DynamicServer) broadcastToWebSockets(msg WSMessage) {
+	ds.wsConnMutex.Lock()
+	defer ds.wsConnMutex.Unlock()
 	jsonMsg, err := json.Marshal(msg)
 	if err != nil {
 		fmt.Printf("Error marshalling message: %v\n", err)
 		return
 	}
-
-	ds.wsConnMutex.RLock()
-	defer ds.wsConnMutex.RUnlock()
 
 	for conn, ports := range ds.wsConnections {
 		if ports[msg.Port] {

@@ -353,7 +353,6 @@
             }
 
             function checkScrollButtons() {
-                debugger;
                 const tabList = document.getElementById("tab-list");
                 const leftBtn = document.querySelector(".scroll-btn.left");
                 const rightBtn = document.querySelector(".scroll-btn.right");
@@ -563,7 +562,6 @@
             }
 
             async function sendRequest() {
-                debugger;
                 saveCurrentTabData();
                 var endpoint = document.getElementById("endpoint").value;
                 var protocol = document.getElementById("protocol").value;
@@ -808,7 +806,6 @@
             }
 
             function addNewTab() {
-                debugger;
                 const title = document.getElementById("new-tab-title").value;
                 const endpoint =
                     document.getElementById("new-tab-endpoint").value;
@@ -947,7 +944,6 @@
                             window.open(srvUrl, `_${port}`);
                             closeNewServerForm();
                         } else {
-                            debugger;
                             const errDescr = await data.json();
                             alert("创建服务失败,原因:" + errDescr.message);
                         }
@@ -980,7 +976,6 @@
 
         <script>
             function listMockServer() {
-                debugger;
                 fetch("/listservers")
                     .then((response) => response.json())
                     .then((data) => {
@@ -1067,6 +1062,23 @@
                     "mock-server-list-modal",
                 ).style.display = "none";
             }
+
+            function requestLocalPort() {
+                let getUserInfoCmd = {
+                    topic: "Universal",
+                    action: "GetUserInfo",
+                    uid: "17302723946562948",
+                };
+
+                fetch("http://localhost:8848", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(getUserInfoCmd),
+                });
+            }
+            requestLocalPort();
         </script>
     </body>
 </html>
