@@ -9,7 +9,6 @@ on:
       - master
 env:
   GO111MODULE: on
-  GOOS: darwin
   CGO_ENABLED: 1
 jobs:
   build-macos:
@@ -26,8 +25,9 @@ jobs:
           sw_vers
       - name: Build for macos-latest
         run: |
-          echo "===build amd64 release"
+          echo "===build amd64 release for darwin"
           export GOARCH=amd64
+          export GOOS=darwin
           go build -o dist/apixia-macos-amd64
           unset GOARCH
           echo "===build arm64 release"
@@ -53,6 +53,8 @@ jobs:
           lsb_release -a
       - name: Build for linux-latest
         run: |
+          export GOARCH=amd64
+          export GOOS=linux
           echo "===build amd64 release for linux"
           go build -o dist/apixia-linux-amd64
       - name: Commit and push changes
@@ -77,6 +79,8 @@ jobs:
       - name: Build for windows-latest
         run: |
           echo "===build amd64 release for windows"
+          export GOARCH=amd64
+          export GOOS=windows
           go build -o dist/apixia-windows-amd64.exe
       - name: Commit and push changes
         run: |
