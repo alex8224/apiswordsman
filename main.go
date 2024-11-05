@@ -1,6 +1,7 @@
 package main
 
 import (
+	"apitest_xia/nativejs"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -21,8 +22,7 @@ import (
 	"github.com/apache/rocketmq-client-go/v2"
 	"github.com/apache/rocketmq-client-go/v2/primitive"
 	"github.com/apache/rocketmq-client-go/v2/producer"
-	"github.com/getlantern/systray"
-	"github.com/getlantern/systray/example/icon"
+	"github.com/dop251/goja"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -32,7 +32,8 @@ import (
 var default_port int = 8080
 
 func main() {
-	systray.Run(onReady, onExit)
+	// systray.Run(onReady, onExit)
+	onReady()
 }
 
 type CreateServerReq struct {
@@ -125,7 +126,7 @@ func startServer() {
 		fmt.Printf("Trying to start server on port %s\n", port)
 		err := r.Run(port)
 		if err == nil {
-			systray.SetTooltip(fmt.Sprintf("%s-:%s", trayToopTip, port))
+			// systray.SetTooltip(fmt.Sprintf("%s-:%s", trayToopTip, port))
 			fmt.Printf("Server started successfully on port %d\n", default_port)
 			break
 		} else {
@@ -505,59 +506,40 @@ func OnTrayDbClick() {
 }
 
 func onReady() {
-	systray.SetIcon(icon.Data)
-	systray.SetTitle("APIXIA")
-	systray.SetTooltip(trayToopTip)
-	// systray.RegisterDbClick(OnTrayDbClick)
+	// systray.SetIcon(icon.Data)
+	// systray.SetTitle("APIXIA")
+	// systray.SetTooltip(trayToopTip)
+	// // systray.RegisterDbClick(OnTrayDbClick)
 
-	mDebug := systray.AddMenuItem("打开调试页", "打开调试页")
-	// 你可以添加一个分隔符
-	systray.AddSeparator()
+	// mDebug := systray.AddMenuItem("打开调试页", "打开调试页")
+	// // 你可以添加一个分隔符
+	// systray.AddSeparator()
 
-	mQuit := systray.AddMenuItem("退出", "退出")
+	// mQuit := systray.AddMenuItem("退出", "退出")
 
-	// 设置菜单项的图标（可选）
-	mDebug.SetIcon(icon.Data)
-	mQuit.SetIcon(icon.Data)
+	// // 设置菜单项的图标（可选）
+	// mDebug.SetIcon(icon.Data)
+	// mQuit.SetIcon(icon.Data)
 
-	// 我们可以操作菜单项
-	go func() {
-		for {
-			select {
-			case <-mQuit.ClickedCh:
-				fmt.Println("Requesting quit")
-				systray.Quit()
-				return
-			case <-mDebug.ClickedCh:
-				fmt.Println("Showing info")
-				openDebugWin()
-			}
-		}
-	}()
+	// // 我们可以操作菜单项
+	// go func() {
+	// 	for {
+	// 		select {
+	// 		case <-mQuit.ClickedCh:
+	// 			fmt.Println("Requesting quit")
+	// 			systray.Quit()
+	// 			return
+	// 		case <-mDebug.ClickedCh:
+	// 			fmt.Println("Showing info")
+	// 			openDebugWin()
+	// 		}
+	// 	}
+	// }()
 
-	go startServer()
+	startServer()
 }
 
 const flashInterval = 200 * time.Millisecond
-
-func handleFlash() {
-	ticker := time.NewTicker(flashInterval)
-	defer ticker.Stop()
-
-	isNormalIcon := true
-	for range ticker.C {
-		if isFlashing {
-			if isNormalIcon {
-				systray.SetIcon(icon.Data)
-				fmt.Println("icon.Data", time.Now())
-			} else {
-				systray.SetIcon(GrayDat)
-				fmt.Println("icon.GrayData", time.Now())
-			}
-			isNormalIcon = !isNormalIcon
-		}
-	}
-}
 
 func openDebugWin() {
 	url := fmt.Sprintf("http://localhost:%d/static/index.html", default_port)
@@ -1052,6 +1034,38 @@ func (ds *DynamicServer) handleMllpConnection(conn net.Conn, req *CreateServerRe
 	}
 }
 
+// 定义一个根据goja脚本对请求进行处理的函数
+// 传递的js 函数签名为  function(path) {}
+func dispatchWithJs(msg *WSMessage, req *CreateServerReq) string {
+	vm := goja.New()
+	nativectx := nativejs.NewCtx(vm)
+
+	vm.Set("nativectx", nativectx)
+	_, err := vm.RunString(req.Data)
+	if err != nil {
+		fmt.Println("解释js失败")
+		return ""
+	}
+
+	var executeFunc func(string) string
+	err = vm.ExportTo(vm.Get("dispatch"), &executeFunc)
+	if err != nil {
+		fmt.Println("导出函数失败")
+		return ""
+	}
+
+	// 调用 dispatch 函数，传递 req.URL 作为参数
+	// 获取 msg.Data.Url 的值，并调用 dispatch 函数，传递 msg.Data.Url 作为参数
+	url, ok := msg.Data.(map[string]interface{})["url"].(string)
+	if !ok {
+		fmt.Println("获取url失败")
+		return ""
+	}
+
+	return executeFunc(url)
+
+}
+
 // startHTTPServer 启动一个新的 HTTP 服务器
 func (ds *DynamicServer) startHTTPServer(req *CreateServerReq, readyChan chan interface{}) {
 	mux := http.NewServeMux()
@@ -1088,7 +1102,13 @@ func (ds *DynamicServer) startHTTPServer(req *CreateServerReq, readyChan chan in
 		}
 		w.WriteHeader(http.StatusOK)
 
-		w.Write([]byte(req.Data))
+		//如果 req.Header中有X-Javascript 字段，则req.Data是需要执行的js脚本，使用 goja 库解释这段脚本并返回响应
+		if _, ok := req.Headers["X-Javascript"]; ok {
+			w.Write([]byte(dispatchWithJs(&msg, req)))
+		} else {
+			w.Write([]byte(req.Data))
+		}
+
 	})
 
 	server := &http.Server{
