@@ -82,7 +82,7 @@ jobs:
         run: |
           echo "===build amd64 release for windows"
           go env
-          go build -o dist/apixia-windows-amd64.exe
+          go build -ldflags -H=windowsgui -o dist/apixia-windows-amd64.exe
           echo "===build amd64 release for windows Done"
       - name: Commit and push changes
         run: |
