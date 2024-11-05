@@ -53,8 +53,7 @@ jobs:
           lsb_release -a
       - name: Build for linux-latest
         run: |
-          echo "===build amd64 release"
-          export GOARCH=amd64
+          echo "===build amd64 release for linux"
           go build -o dist/apixia-linux-amd64
       - name: Commit and push changes
         run: |
@@ -77,8 +76,7 @@ jobs:
           systeminfo | findstr /B /C:"OS Name" /C:"OS Version"
       - name: Build for windows-latest
         run: |
-          echo "===build amd64 release"
-          set GOARCH=amd64
+          echo "===build amd64 release for windows"
           go build -o dist/apixia-windows-amd64.exe
       - name: Commit and push changes
         run: |
