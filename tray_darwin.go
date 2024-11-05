@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os/exec"
-	"runtime"
 	"time"
 	"github.com/getlantern/systray"
 	"github.com/getlantern/systray/example/icon"
