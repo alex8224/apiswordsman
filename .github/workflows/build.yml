@@ -39,3 +39,51 @@ jobs:
           git add dist/
           git commit -m "Add built artifact for ${{ matrix.os }}"
           git push
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.23
+      - name: output os version
+        run: |
+          lsb_release -a
+      - name: Build for linux-latest
+        run: |
+          echo "===build amd64 release"
+          export GOARCH=amd64
+          go build -o dist/apixia-linux-amd64
+      - name: Commit and push changes
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add dist/
+          git commit -m "Add built artifact for ${{ matrix.os }}"
+          git push
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.23
+      - name: output os version
+        run: |
+          systeminfo | findstr /B /C:"OS Name" /C:"OS Version"
+      - name: Build for windows-latest
+        run: |
+          echo "===build amd64 release"
+          set GOARCH=amd64
+          go build -o dist/apixia-windows-amd64.exe
+      - name: Commit and push changes
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add dist/
+          git commit -m "Add built artifact for ${{ matrix.os }}"
+          git push
