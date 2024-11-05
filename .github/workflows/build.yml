@@ -92,6 +92,7 @@ jobs:
           git config user.email github-actions@github.com
           git pull
           dir dist
-          git add dist/
+          git status
+          git add dist/apixia-windows-amd64.exe
           git commit -m "Add built artifact for ${{ matrix.os }}"
           git push
