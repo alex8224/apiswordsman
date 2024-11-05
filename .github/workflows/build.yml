@@ -83,16 +83,12 @@ jobs:
           echo "===build amd64 release for windows"
           go env
           go build -o dist/apixia-windows-amd64.exe
-          dir
-          dir dist
           echo "===build amd64 release for windows Done"
       - name: Commit and push changes
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
           git pull
-          dir dist
-          git status
-          git add dist/apixia-windows-amd64.exe
+          git add -f dist/apixia-windows-amd64.exe
           git commit -m "Add built artifact for ${{ matrix.os }}"
           git push
